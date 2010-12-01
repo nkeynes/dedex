@@ -36,6 +36,13 @@ public class DexMethodBody {
 	protected void setParent( DexMethod parent ) { this.parent = parent; }
 	
 	public DexMethod getParent() { return parent; }
+	public DexFile getFile() {
+		if( parent == null ) {
+			return null;
+		} else {
+			return parent.getFile();
+		}
+	}
 	
 	public int getNumRegisters() { return numRegisters; }
 	public int getInArgWords() { return inArgWords; }
@@ -43,6 +50,7 @@ public class DexMethodBody {
 	public DexDebug getDebugInfo() { return debug; }
 	
 	public short []getCode() { return code; }
+	public short getWord( int idx ) { return code[idx]; }
 	
 	public ExceptionBlock []getExceptionHandlers() { return handlers; }
 	

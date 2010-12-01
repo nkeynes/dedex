@@ -2,19 +2,24 @@ package com.toccatasystems.dalvik;
 
 public class DexField extends DexItem {
 	private String type;
+	private String classType;
 	private DexValue initValue;
 	
-	public DexField(String name, String type, int flags) {
+	public DexField(String classType, String name, String type, int flags) {
 		super(name, flags);
 		this.type = type;
+		this.classType = classType;
 	}
 	
 	public DexField(DexField field, int flags) {
 		super(field.name, flags);
 		this.type = field.type;
+		this.classType = field.classType;
 	}
 
 	public String getType() { return type; }
+	
+	public String getClassType() { return classType; }
 	
 	protected void setInitializer( DexValue init ) { this.initValue = init; }
 	

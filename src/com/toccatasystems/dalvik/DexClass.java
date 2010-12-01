@@ -55,4 +55,13 @@ public class DexClass extends DexItem {
 		}
 		visitor.leaveClass(this);
 	}
+	
+	public String getInternalName() {
+		int idx = name.indexOf(';');
+		if( name.charAt(0) == 'L' && idx != -1 ) {
+			return name.substring(1,idx);
+		} else {
+			return name;
+		}
+	}
 }

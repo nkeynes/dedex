@@ -24,6 +24,13 @@ public class DexItem {
 	
 	protected void setParent( DexItem item ) { this.parent = item; }
 	public DexItem getParent() { return parent; }
+	public DexFile getFile() {
+		if( parent == null ) {
+			return null;
+		} else {
+			return parent.getFile();
+		}
+	}
 	
 	public String getName() { return name; }
 

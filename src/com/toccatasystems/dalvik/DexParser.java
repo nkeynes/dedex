@@ -469,11 +469,12 @@ public class DexParser {
 		DexMethod[] methods = new DexMethod[methodSize];
 		for( int i=0; i<methodSize; i++ ) {
 			int offset = methodOffset + (i*8);
+			String type = readShortTypeId(offset);
 			int protoIdx = data.getShort(offset+2);
 			if( protoIdx < 0 || protoIdx >= protos.length)
 				throw new ParseException("Invalid prototype ID");
 			String name = readStringId(offset+4);
-			methods[i] = new DexMethod(name, protos[protoIdx]);
+			methods[i] = new DexMethod(type, name, protos[protoIdx]);
 		}
 		return methods;
 	}
@@ -490,9 +491,10 @@ public class DexParser {
 		DexField[] fields = new DexField[fieldSize];
 		for( int i=0; i<fieldSize; i++ ) {
 			int offset = fieldOffset + (i*8);
+			String classType = readShortTypeId(offset);
 			String type = readShortTypeId(offset+2);
 			String name = readStringId(offset+4);
-			fields[i] = new DexField(name,type,0);
+			fields[i] = new DexField(classType, name,type,0);
 		}
 		return fields;
 	}

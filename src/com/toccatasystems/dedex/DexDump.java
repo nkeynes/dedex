@@ -13,6 +13,7 @@ import com.toccatasystems.dalvik.DexField;
 import com.toccatasystems.dalvik.DexFile;
 import com.toccatasystems.dalvik.DexMethod;
 import com.toccatasystems.dalvik.DexMethodBody;
+import com.toccatasystems.dalvik.DexInstruction;
 import com.toccatasystems.dalvik.DexValue;
 import com.toccatasystems.dalvik.DexVisitor;
 
@@ -123,7 +124,9 @@ public class DexDump implements DexVisitor {
 		}
 		
 		if( method.hasBody() ) {
-			out.println(" { }");
+			out.println(" {");
+			DexInstruction.disassemble(method.getBody(), out);
+			out.println("    }");
 		} else {
 			out.println(";");
 		}

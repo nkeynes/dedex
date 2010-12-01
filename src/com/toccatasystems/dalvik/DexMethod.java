@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.ArrayList;
 
 public class DexMethod extends DexItem {
+	private String classType;
 	private String returnType;
 	private String paramTypes[];
 	private DexMethodBody code;
@@ -20,8 +21,9 @@ public class DexMethod extends DexItem {
 		}
 	}
 	
-	public DexMethod(String name, DexMethod prototype) {
+	public DexMethod(String type, String name, DexMethod prototype) {
 		super(name, prototype.flags);
+		this.classType = type;
 		this.returnType = prototype.returnType;
 		this.paramTypes = prototype.paramTypes;
 		this.code = prototype.code;
@@ -78,6 +80,17 @@ public class DexMethod extends DexItem {
 	public String getReturnType() { return returnType; }
 	public int getNumParamTypes() { return paramTypes.length; }
 	public String getParamType(int idx) { return paramTypes[idx]; }
+	public String getDescriptor() {
+		StringBuffer buf = new StringBuffer("(");
+		for( int i=0; i<paramTypes.length; i++ ) {
+			buf.append(paramTypes[i]);
+		}
+		buf.append(")");
+		buf.append(returnType);
+		return buf.toString();
+	}
 	public DexMethodBody getBody() { return code; }
 	public boolean hasBody() { return code != null; }
+	
+	public String getClassType() { return classType; }
 }
