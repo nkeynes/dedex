@@ -1,13 +1,13 @@
 package com.toccatasystems.dalvik;
 
 public class DexClass extends DexItem {
-	public String superclass;
-	public String []interfaces;
-	String sourceFile;
-	public DexField[] staticFields;
-	public DexField[] instanceFields;
-	public DexMethod[] directMethods;
-	public DexMethod[] virtualMethods;
+	private String superclass;
+	private String []interfaces;
+	private String sourceFile;
+	private DexField[] staticFields;
+	private DexField[] instanceFields;
+	private DexMethod[] directMethods;
+	private DexMethod[] virtualMethods;
 	
 	public DexClass( String name, int flags, String superclass,
 			String []interfaces, String sourceFile,
@@ -41,6 +41,7 @@ public class DexClass extends DexItem {
 	
 	public void visit( DexVisitor visitor ) {
 		visitor.enterClass(this);
+		visitAnnotations(visitor);
 		for( int i=0; i<staticFields.length; i++ ) {
 			staticFields[i].visit(visitor);
 		}
@@ -56,12 +57,86 @@ public class DexClass extends DexItem {
 		visitor.leaveClass(this);
 	}
 	
+	public String getSuperclass() {
+		return superclass;
+	}
+	
+	public String[] getInterfaces() {
+		return interfaces;
+	}
+	
+	public String getSourceFile() {
+		return sourceFile;
+	}
+	
 	public String getInternalName() {
-		int idx = name.indexOf(';');
-		if( name.charAt(0) == 'L' && idx != -1 ) {
-			return name.substring(1,idx);
+		return formatInternalName(name);
+	}
+	
+	public String getInternalSuperName() {
+		return formatInternalName(superclass);
+	}
+	
+	public String[] getInternalInterfaces() {
+		if( interfaces == null ) {
+			return null;
 		} else {
-			return name;
+			String []result = new String[interfaces.length];
+			for( int i=0; i<interfaces.length; i++ ) {
+				result[i] = formatInternalName(interfaces[i]);
+			}
+			return result;
 		}
+	}
+			
+	
+	/**
+	 * Return the class kind, which may be one of "interface", "annotation",
+	 * "enum", or "class", depending on the class flags.
+	 * @param flags
+	 * @return
+	 */
+	public String getKind( ) {
+		if( (flags & INTERFACE) != 0 ) 
+			return "interface";
+		else if( (flags & ANNOTATION) != 0 )
+			return "annotation";
+		else if( (flags & ENUM) != 0 )
+			return "enum";
+		else return "class";
+	}
+	
+	public String getEnclosingClass( ) {
+		return getAnnotationString(DexAnnotation.DALVIK_ENCLOSINGCLASS, "value");
+	}
+	
+	public String getInternalEnclosingClass( ) {
+		String str = getEnclosingClass();
+		if( str == null ) {
+			return null;
+		} else {
+			return formatInternalName(str);
+		}
+	}
+	
+	public DexMethod getEnclosingMethod( ) {
+		return getAnnotationMethod(DexAnnotation.DALVIK_ENCLOSINGMETHOD, "value");
+	}
+	
+	public String[] getMemberClasses( ) {
+		return getAnnotationStringArray(DexAnnotation.DALVIK_MEMBERCLASSES, "value");
+	}
+	
+	public String getInnerClassName( ) {
+		return getAnnotationString(DexAnnotation.DALVIK_INNERCLASS, "value" );
+	}
+	
+	public int getInnerClassFlags( ) {
+		Integer i = getAnnotationInteger(DexAnnotation.DALVIK_INNERCLASS, "accessFlags" );
+		return i == null ? 0 : i.intValue();
+	}
+	
+	public boolean isInnerClass( ) {
+		return hasAnnotation(DexAnnotation.DALVIK_INNERCLASS);
 	}
 }

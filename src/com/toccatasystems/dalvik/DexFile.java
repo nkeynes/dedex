@@ -86,31 +86,6 @@ public class DexFile extends DexItem {
 	public String getDisplayMethodSignature( int idx ) {
 		return formatMethodSignature(getMethod(idx));
 	}
-		
-	
-	public static String formatTypeName( String typeName ) {
-		int idx;
-		switch( typeName.charAt(0) ) {
-		case 'B': return "byte";
-		case 'C': return "char";
-		case 'D': return "double";
-		case 'F': return "float";
-		case 'I': return "int";
-		case 'J': return "long";
-		case 'L':
-			idx = typeName.indexOf(';');
-			if( idx == -1 ) {
-				return typeName;
-			} else {
-				return typeName.substring(1, idx).replace('/', '.');
-			}
-		case 'S': return "short";
-		case 'V': return "void";
-		case 'Z': return "boolean";
-		case '[': return formatTypeName( typeName.substring(1)) + "[]";
-		default: return typeName;
-		}
-	}
 	
 	public static String formatMethodSignature( DexMethod method ) {
 		StringBuilder builder = new StringBuilder("(");

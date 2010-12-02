@@ -1,2 +1,8 @@
+syntax: glob
+.classpath
+.settings/
 target/
 apidoc/
+lib/
+bin/
+*~

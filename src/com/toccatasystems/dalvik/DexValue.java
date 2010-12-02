@@ -1,5 +1,8 @@
 package com.toccatasystems.dalvik;
 
+import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.lang.StringUtils;
+
 /**
  * Class representing a generic value holder
  * @author nkeynes
@@ -34,4 +37,48 @@ public class DexValue {
 	public int getType() { return type; }
 	public Object getValue() { return value; }
 	
+	/**
+	 * Format the value as a string.
+	 */
+	public String toString() {
+		if( value == null ) {
+			return "null";
+		} else if( type == ARRAY ) {
+			DexValue[] arr = (DexValue[])value;
+			return "{" + StringUtils.join(arr, ",") + "}";
+		} else {
+			return value.toString();
+		}
+	}
+
+	/**
+	 * Format the value for validity in Java source
+	 * @return
+	 */
+	public String toLiteral() {
+		if( value == null ) {
+			return "null";
+		}
+		switch( type ) {
+		case ARRAY:
+			DexValue [] arr = (DexValue [])value;
+			String[] str = new String[arr.length];
+			for( int i=0; i<arr.length; i++ ) {
+				str[i] = arr[i].toLiteral();
+			}
+			return "{" + StringUtils.join(str, ", ") + "}";
+		case TYPE:
+			return DexItem.formatTypeName(value.toString());
+		case STRING:
+			return "\"" + StringEscapeUtils.escapeJava(value.toString()) + "\"";
+		case METHOD:
+			return ((DexMethod)value).getDisplayName();
+		case FIELD:
+		case ENUM:
+			return ((DexField)value).getDisplayName();
+		default:
+			return value.toString();
+		}
+
+	}
 }

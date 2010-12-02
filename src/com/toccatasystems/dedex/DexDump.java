@@ -6,7 +6,6 @@ import java.util.Map;
 
 import org.apache.commons.lang.StringEscapeUtils;
 
-import com.toccatasystems.dalvik.DexAccessFlags;
 import com.toccatasystems.dalvik.DexAnnotation;
 import com.toccatasystems.dalvik.DexClass;
 import com.toccatasystems.dalvik.DexField;
@@ -77,16 +76,17 @@ public class DexDump implements DexVisitor {
 			currPackageName = packageName;
 		}
 		
-		String modifier = DexAccessFlags.toString(clz.getFlags());
-		out.print( modifier + DexAccessFlags.getClassKind(clz.getFlags()) + " " + currClassName);
-		if( clz.superclass != null ) 
-			out.print(" extends " + formatTypeName(clz.superclass));
-		if( clz.interfaces != null && clz.interfaces.length != 0 ) {
+		String modifier = clz.getFlagsString();
+		out.print( modifier + clz.getKind() + " " + currClassName);
+		if( clz.getSuperclass() != null ) 
+			out.print(" extends " + formatTypeName(clz.getSuperclass()));
+		String interfaces[] = clz.getInterfaces();
+		if( interfaces != null && interfaces.length != 0 ) {
 			out.print(" implements " );
-			for( int i=0; i<clz.interfaces.length; i++ ) {
+			for( int i=0; i<interfaces.length; i++ ) {
 				if( i != 0 )
 					out.print( ", " );
-				out.print( formatTypeName(clz.interfaces[i]) );
+				out.print( formatTypeName(interfaces[i]) );
 			}
 		}
 		out.println( " {" );
@@ -96,7 +96,7 @@ public class DexDump implements DexVisitor {
 	}
 
 	public void leaveField(DexField field) {
-		out.print("    " + DexAccessFlags.toString(field.getFlags()) + formatTypeName(field.getType()) + " " + field.getName());
+		out.print("    " + field.getFlagsString() + formatTypeName(field.getType()) + " " + field.getName());
 		if( field.hasInitializer() ) {
 			out.print( " = " + formatValue(field.getInitializer()));
 		}
@@ -114,13 +114,23 @@ public class DexDump implements DexVisitor {
 		} else {
 			if( name.equals("<init>") )
 				name = currClassName;
-			out.print("    " + DexAccessFlags.toString(method.getFlags()) + formatTypeName(method.getReturnType()) + " " + name + "(" );
+			out.print("    " + method.getFlagsString() + formatTypeName(method.getReturnType()) + " " + name + "(" );
 			for( int i=0; i<method.getNumParamTypes(); i++ ) {
 				if( i != 0 )
 					out.print(", ");
 				out.print( formatTypeName(method.getParamType(i)) );
 			}
 			out.print( ")" );
+		}
+		
+		String[]throwtypes = method.getThrows();
+		if( throwtypes != null ) {
+			out.print(" throws ");
+			for( int i=0; i<throwtypes.length; i++ ) {
+				if( i != 0 )
+					out.print(", ");
+				out.print(formatTypeName(throwtypes[i]));
+			}
 		}
 		
 		if( method.hasBody() ) {

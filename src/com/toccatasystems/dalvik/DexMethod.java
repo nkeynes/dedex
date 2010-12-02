@@ -93,4 +93,20 @@ public class DexMethod extends DexItem {
 	public boolean hasBody() { return code != null; }
 	
 	public String getClassType() { return classType; }
+	public String getInternalClassType() { return formatInternalName(classType); }
+	
+	public String[] getThrows() {
+		return getAnnotationStringArray(DexAnnotation.DALVIK_THROWS, "value");
+	}
+	
+	public String[] getInternalThrows() {
+		String[] arr = getThrows();
+		if( arr != null ) {
+			for( int i=0; i<arr.length; i++ ) {
+				arr[i] = formatInternalName(arr[i]);
+			}
+		}
+		return arr;
+	}
+			
 }
