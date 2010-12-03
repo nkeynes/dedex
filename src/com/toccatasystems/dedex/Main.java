@@ -27,6 +27,7 @@ public class Main {
 		options.addOption("D", "dump", false, "Dump file information to console");
 		options.addOption("j","jar",true,"Specify an output JAR file to generate");
 		options.addOption("h","help",false, "Print this help message");
+		options.addOption("v","verbose", false, "Verbose disassembly (with -D)");
 		commandLineOptions = options;
 	}
 	
@@ -104,7 +105,7 @@ public class Main {
 			}
 			
 			if( cl.hasOption('D') ) {
-				DexDump dump = new DexDump(System.out);
+				DexDump dump = new DexDump(System.out, cl.hasOption('v'));
 				dex.visit(dump);
 			} else {
 				dex.visit( transform );

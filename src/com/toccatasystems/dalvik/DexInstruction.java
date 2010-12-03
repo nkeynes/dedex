@@ -476,6 +476,10 @@ public class DexInstruction {
 		System.arraycopy(code, target, this.code, words, extra);
 	}
 	
+	public int getPC() {
+		return pc;
+	}
+	
 	/**
 	 * @return the number of words used by the instruction
 	 */
@@ -502,7 +506,86 @@ public class DexInstruction {
 	public boolean isInstruction() {
 		return instruction.getMode() != M_DATA;
 	}
-
+	
+	public boolean isUncondBranch() {
+		int opcode = getOpcode();
+		return opcode == GOTO || opcode == GOTO16 || opcode == GOTO32;
+	}
+	
+	public boolean isCondBranch() {
+		int opcode = getOpcode();
+		return opcode >= IF_EQ && opcode <= IF_LEZ;
+	}
+	
+	public boolean isSwitch() {
+		int opcode = getOpcode();
+		return opcode == PACKED_SWITCH || opcode == SPARSE_SWITCH;
+	}
+	
+	public boolean isReturn() {
+		int opcode = getOpcode();
+		return opcode >= RETURN_VOID && opcode <= RETURN_OBJECT;
+	}
+	
+	public boolean isInvoke() {
+		int opcode = getOpcode();
+		return opcode >= INVOKE_VIRTUAL && opcode <= INVOKE_INTERFACE_RANGE &&
+		    opcode != 0x73; /* Undef in the middle */
+	}
+	
+	public boolean isThrow() {
+		return getOpcode() == THROW;
+	}
+		
+	
+	public int getBranchTarget() {
+		switch( instruction.mode ) {
+		case M_10T: 
+			return pc + getSHighByte(0);
+		case M_20T: 
+		case M_21T: 
+		case M_22T:
+			return pc + getShort(1);
+		case M_30T:
+		case M_31T:
+			return pc + getInt(1);
+		default:
+			throw new IllegalArgumentException("Instruction does not have a branch target");
+		}
+	}
+	
+	public String getBranchLabel() {
+		int target = getBranchTarget();
+		DexBasicBlock bb = method.getBlockForPC(target);
+		if( bb == null ) {
+			return "";
+		} else {
+			return bb.getName();
+		}
+	}
+	
+	public int[] getSwitchTargets() {
+		int opcode = getOpcode();
+		int start = size();
+		if( opcode == PACKED_SWITCH ) {
+			int size = getUShort(start+1);
+			int[] result = new int[size];
+			for( int i=0; i<size; i++ ) {
+				result[i] =  pc + getInt(start + 4 + i*2);
+			}
+			return result;
+		} else if( opcode == SPARSE_SWITCH ) {
+			int size = getUShort(start+1);
+			int []result = new int[size];
+			for( int i=0; i<size; i++ ) {
+				result[i] = pc + getInt(start + 4 + i*2 + size*2);
+			}
+			return result;
+		} else {
+			return null;
+		}
+	}
+	
 	public String formatOperands( ) {
 		StringBuilder result = new StringBuilder();
 		Formatter fmt = new Formatter(result);
@@ -511,30 +594,30 @@ public class DexInstruction {
 		int mode = instruction.getMode();
 		short mainWord = code[0];
 		switch( mode ) {
-		case M_10T: fmt.format("%04X", pc + sextHighByte(mainWord) ); break;
+		case M_10T: fmt.format("%s (%04X)", getBranchLabel(), getBranchTarget()); break;
 		case M_10X: break; /* No operands */
 		case M_DATA: break;
 		case M_11N: fmt.format("v%d, #%02X", thirdNibble(mainWord), sextHighNibble(mainWord) ); break;
 		case M_11X: fmt.format("v%d", highByte(mainWord)); break;
 		case M_12X: fmt.format("v%d, v%d", thirdNibble(mainWord), highNibble(mainWord) ); break;
-		case M_20T: fmt.format("%04X", pc + code[1]); break;
+		case M_20T: fmt.format("%s (%04X)", getBranchLabel(), getBranchTarget()); break;
 		case M_21Cstring: fmt.format("v%d, %s", highByte(mainWord), getString16(1)); break;
 		case M_21Ctype: fmt.format("v%d, %s", highByte(mainWord), getTypeId(1)); break;
 		case M_21Cfield: fmt.format("v%d, %s", highByte(mainWord), getFieldId(1)); break;
 		case M_21H: fmt.format("v%d, #%04X0000(00000000)", highByte(mainWord), getUShort(1)); break;
 		case M_21S: fmt.format("v%d, #%04X", highByte(mainWord), getShort(1)); break;
-		case M_21T: fmt.format("v%d, %04X", highByte(mainWord), pc + getShort(1)); break;
+		case M_21T: fmt.format("v%d, %s (%04X)", highByte(mainWord), getBranchLabel(), getBranchTarget()); break;
 		case M_22B: fmt.format("v%d, v%d, #%02X", highByte(mainWord), getULowByte(1), getSHighByte(1)); break; 
 		case M_22Cfield: fmt.format("v%d, v%d, %s", thirdNibble(mainWord), highNibble(mainWord), getFieldId(1)); break;
 		case M_22Ctype:  fmt.format("v%d, v%d, %s", thirdNibble(mainWord), highNibble(mainWord), getTypeId(1)); break;
 		case M_22S: fmt.format("v%d, v%d, #%04X", thirdNibble(mainWord), highNibble(mainWord), getShort(1)); break;
-		case M_22T: fmt.format("v%d, v%d, %04X", thirdNibble(mainWord), highNibble(mainWord), pc + getShort(1)); break;
+		case M_22T: fmt.format("v%d, v%d, %s (%04X)", thirdNibble(mainWord), highNibble(mainWord), getBranchLabel(), getBranchTarget() ); break;
 		case M_22X: fmt.format("v%d, v%d", highByte(mainWord), getUShort(1)); break;
 		case M_23X: fmt.format("v%d, v%d, v%d", highByte(mainWord), getULowByte(1), getUHighByte(1)); break;
-		case M_30T: fmt.format("%08X", pc + getInt(1)); break;
+		case M_30T: fmt.format("%s (%08X)", getBranchLabel(), getBranchTarget()); break;
 		case M_31Cstring: fmt.format("v%d, %s", highByte(mainWord), getString32(1)); break;
 		case M_31I: fmt.format("v%d, #%08X", highByte(mainWord), getInt(1)); break;
-		case M_31T: fmt.format("v%d, %08X", highByte(mainWord), pc + getInt(1)); break;
+		case M_31T: fmt.format("v%d, %s (%08X)", highByte(mainWord), getBranchLabel(), getBranchTarget()); break;
 		case M_32X: fmt.format("v%d, v%d", getUShort(1), getUShort(2)); break;
 		case M_35Cmethod: /* B|A|op CCCC G|F|E|D : [B=count] op {vD, vE, vF, vG, vA}, (meth|type|kind)@CCCC */
 		case M_35Ctype:
@@ -616,44 +699,16 @@ public class DexInstruction {
 		}
 		return builder.toString();
 	}
-		
-	public static void disassemble( DexMethodBody code, PrintStream out ) {
-		Formatter formatter = new Formatter(out);
-		short insns[] = code.getCode();
-		out.println( "        Locals: " + code.getNumRegisters() );
-		for( int i=0; i<insns.length; ) {
-			DexInstruction inst = new DexInstruction(code, i);
-			int words = inst.size();
 
-			formatter.format("        %04X: ", i);
-			/* Print the raw data */
-			for( int j=0; j<5; j++ ) {
-				if( j < words ) {
-					if( i+j < insns.length ) {
-						formatter.format("%04X ",((int)insns[i+j]) & 0xFFFF);
-					} else {
-						out.print( "???? ");
-					}
-				} else {
-					out.print( "     " );
-				}
-			}
-
-			out.println( inst.disassemble() );
-			out.print(inst.formatTable("            "));
-			i += words;
-		}
-	}
-	
-	private int getInt( int posn ) {
+	public int getInt( int posn ) {
 		return (((int)code[posn]) & 0xFFFF) | (((int)code[posn+1]) << 16);
 	}
 	
-	private int getUShort( int posn ) {
+	public int getUShort( int posn ) {
 		return ((int)code[posn]) & 0xFFFF;
 	}
 	
-	private int getShort( int posn ) {
+	public int getShort( int posn ) {
 		return ((int)code[posn]);
 	}
 	

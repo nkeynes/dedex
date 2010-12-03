@@ -12,7 +12,6 @@ import com.toccatasystems.dalvik.DexField;
 import com.toccatasystems.dalvik.DexFile;
 import com.toccatasystems.dalvik.DexMethod;
 import com.toccatasystems.dalvik.DexMethodBody;
-import com.toccatasystems.dalvik.DexInstruction;
 import com.toccatasystems.dalvik.DexValue;
 import com.toccatasystems.dalvik.DexVisitor;
 
@@ -21,6 +20,7 @@ public class DexDump implements DexVisitor {
 	private PrintStream out;
 	private String currPackageName;
 	private String currClassName;
+	private boolean verbose;
 	
 	String formatTypeName( String typeName ) {
 		int idx;
@@ -50,8 +50,9 @@ public class DexDump implements DexVisitor {
 		return "";
 	}
 	
-	public DexDump( PrintStream out ) {
+	public DexDump( PrintStream out, boolean verbose ) {
 		this.out = out;
+		this.verbose = verbose;
 		currPackageName = "";
 		currClassName = "";
 	}
@@ -135,7 +136,7 @@ public class DexDump implements DexVisitor {
 		
 		if( method.hasBody() ) {
 			out.println(" {");
-			DexInstruction.disassemble(method.getBody(), out);
+			method.getBody().disassemble(out, verbose);
 			out.println("    }");
 		} else {
 			out.println(";");
