@@ -211,7 +211,7 @@ public class DexParser {
 		for( int i=0; i<numInst; i++ ) {
 			code[i] = data.getShort();
 		}
-		List<DexMethodBody.ExceptionBlock> handlers = new ArrayList<DexMethodBody.ExceptionBlock>();
+		List<DexTryCatch> handlers = new ArrayList<DexTryCatch>();
 		if( numTries > 0 ) {
 			if( (numInst & 1) != 0 ) 
 				data.getShort(); /* Skip padding */
@@ -224,23 +224,21 @@ public class DexParser {
 			}
 		}
 		
-		DexMethodBody.ExceptionBlock [] arr = new DexMethodBody.ExceptionBlock[handlers.size()];
-		handlers.toArray(arr);
 		DexDebug debug = null;
 		if( debugInfoOffset != 0 ) {
 			data.position(debugInfoOffset);
 			debug = readDebugInfo();
 		}
 		data.position(saveposn);
-		return new DexMethodBody(numRegisters, inArgWords, outArgWords, code, debug, arr);
+		return new DexMethodBody(numRegisters, inArgWords, outArgWords, code, debug, handlers);
 	}
 	
-	private List<DexMethodBody.ExceptionBlock> readCatchHandlers( int addr, int count, int fileOffset ) throws ParseException {
+	private List<DexTryCatch> readCatchHandlers( int addr, int count, int fileOffset ) throws ParseException {
 		int saveposn = data.position();
 		data.position(fileOffset);
 		int size = readSLEB128();
 		boolean catchall = false;
-		List<DexMethodBody.ExceptionBlock> handlers = new ArrayList<DexMethodBody.ExceptionBlock>();
+		List<DexTryCatch> handlers = new ArrayList<DexTryCatch>();
 		if( size <= 0 ) {
 			catchall = true;
 			size = -size;
@@ -251,11 +249,11 @@ public class DexParser {
 			if( typeId < 0 || typeId >= typeNameTable.length ) 
 				throw new ParseException( "Invalid Type ID" );
 			String type = typeNameTable[typeId];
-			handlers.add(new DexMethodBody.ExceptionBlock(addr, count, handler, type));
+			handlers.add(new DexTryCatch(addr, count, handler, type));
 		}
 		if( catchall ) {
 			int handler = readULEB128();
-			handlers.add(new DexMethodBody.ExceptionBlock(addr, count, handler, null));
+			handlers.add(new DexTryCatch(addr, count, handler, null));
 		}
 		
 		data.position(saveposn);

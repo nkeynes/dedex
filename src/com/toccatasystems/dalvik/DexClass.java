@@ -139,4 +139,16 @@ public class DexClass extends DexItem {
 	public boolean isInnerClass( ) {
 		return hasAnnotation(DexAnnotation.DALVIK_INNERCLASS);
 	}
+	
+	public int getNumMethods() {
+		return directMethods.length + virtualMethods.length;
+	}
+	
+	public DexMethod getMethod( int idx ) {
+		if( idx < directMethods.length ) {
+			return directMethods[idx];
+		} else {
+			return virtualMethods[idx - directMethods.length];
+		}
+	}
 }

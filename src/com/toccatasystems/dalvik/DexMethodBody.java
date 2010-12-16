@@ -2,7 +2,6 @@ package com.toccatasystems.dalvik;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Formatter;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -12,38 +11,34 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 public class DexMethodBody {
-	public static class ExceptionBlock {
-		int startInst;
-		int instCount;
-		int handleInst;
-		String type;
-		
-		public ExceptionBlock(int startInst, int instCount, int handleInst, String type ) {
-			this.startInst = startInst;
-			this.instCount = instCount;
-			this.handleInst = handleInst;
-			this.type = type;
-		}
-	}
-
 	private DexMethod parent;
 	private int numRegisters;
 	private int inArgWords;
 	private int outArgWords;
 	private short []code;
 	private DexDebug debug;
-	private ExceptionBlock []handlers;
-	Map<Integer, DexBasicBlock> blocks;
+	private List<DexTryCatch> handlers;
+	private Map<Integer, DexBasicBlock> blocks;
+	private List<DexBasicBlock> exitBlocks;
 	
 	
 	public DexMethodBody( int numRegisters, int inArgWords, int outArgWords,
-			short[]code, DexDebug debug, ExceptionBlock[]handlers ) {
+			short[]code, DexDebug debug, List<DexTryCatch> handlers ) {
 		this.numRegisters = numRegisters;
 		this.inArgWords = inArgWords;
 		this.outArgWords = outArgWords;
 		this.code = code;
 		this.debug = debug;
 		this.handlers = handlers;
+		this.exitBlocks = new ArrayList<DexBasicBlock>();
+		if( handlers == null ) {
+			this.handlers = new ArrayList<DexTryCatch>();
+		} else {
+			for( Iterator<DexTryCatch> it = handlers.iterator(); it.hasNext(); ) {
+				it.next().setParent(this);
+			}
+		}
+
 		computeCFG();
 	}
 	
@@ -66,10 +61,27 @@ public class DexMethodBody {
 	public short []getCode() { return code; }
 	public short getWord( int idx ) { return code[idx]; }
 	
-	public ExceptionBlock []getExceptionHandlers() { return handlers; }
+	public List<DexTryCatch> getExceptionHandlers() { return handlers; }
 	
+	public Iterator<DexTryCatch> handlerIterator() {
+		return handlers.iterator();
+	}
+		
 	public DexBasicBlock getEntryBlock() {
 		return blocks.get(0);
+	}
+	
+	public List<DexBasicBlock> getExitBlocks() {
+		return exitBlocks;
+	}
+	
+	public Set<DexBasicBlock> getHandlerBlocks() {
+		Set<DexBasicBlock> handlerBlocks = new TreeSet<DexBasicBlock>();
+		for( Iterator<DexTryCatch> it = handlers.iterator(); it.hasNext(); ) {
+			DexTryCatch ent = it.next();
+			handlerBlocks.add( ent.getHandlerBlock() );
+		}
+		return handlerBlocks;
 	}
 	
 	public DexBasicBlock getBlockForPC( int pc ) {
@@ -80,48 +92,45 @@ public class DexMethodBody {
 		return blocks.values().iterator();
 	}
 	
+	public Iterator<DexBasicBlock> iterator( int pc ) {
+		if( pc == 0 ) {
+			return blocks.values().iterator();
+		} else {
+			int count = 0;
+			Iterator<DexBasicBlock> it = blocks.values().iterator();
+			while( it.hasNext() ) {
+				DexBasicBlock bb = it.next();
+				if( bb.getEndPC() == pc ) {
+					break;
+				}
+				if( bb.getPC() <= pc && bb.getEndPC() > pc ) {
+					/* Went too far, start again with count */
+					it = blocks.values().iterator();
+					for( int i=0; i<count; i++ ) {
+						it.next();
+					}
+					break;
+				}
+				count++;
+			}
+			return it;
+		}
+	}
 	
+	public Iterator<DexBasicBlock> iterator( DexBasicBlock bb ) {
+		return iterator(bb.getPC());
+	}
+	
+
 	public void disassemble( PrintStream out ) {
 		disassemble(out, false);
 	}
 	
 	public void disassemble( PrintStream out, boolean verbose ) {
-		Formatter formatter = new Formatter(out);
 		out.println( "        Locals: " + getNumRegisters() );
 		for( Iterator<DexBasicBlock> bbit = iterator(); bbit.hasNext(); ) {
 			DexBasicBlock bb = bbit.next();
-			out.print("    " + bb.getName() + ":");
-			if( bb.getNumPredecessors() != 0 ) {
-				out.print( "    ; preds: " );
-				int count = 0;
-				for( Iterator<DexBasicBlock> pit = bb.predIterator(); pit.hasNext(); ) {
-					if( count != 0 ) {
-						out.print( ", " );
-					}
-					out.print( pit.next().getName() );
-					count++;
-				}
-			}
-			out.println();
-			for( Iterator<DexInstruction> ii = bb.iterator(); ii.hasNext(); ) {
-				DexInstruction inst = ii.next();
-				if( verbose ) {
-					int pc = inst.getPC();
-					formatter.format("        %04X: ", pc);
-					/* Print the raw data */
-					for( int j=0; j<5; j++ ) {
-						if( j < inst.size() ) {
-							formatter.format("%04X ", inst.getUShort(j));
-						} else {
-							out.print( "     " );
-						}
-					}
-				} else {
-					out.print( "        " );
-				}
-				out.println( inst.disassemble() );
-				out.print(inst.formatTable("            "));
-			}
+			bb.disassemble(out, verbose);
 		}
 	}
 	
@@ -133,17 +142,16 @@ public class DexMethodBody {
 		Set<Integer> tryEndInsts = new TreeSet<Integer>();
 		worklist.add(new Integer(0));
 		
-		if( handlers != null ) {
-			for( int i=0; i<handlers.length; i++ ) {
-				worklist.add(handlers[i].startInst);
-				worklist.add(handlers[i].handleInst);
-				/* The end of the try block is handled specially - it may not
-				 * actually be a real instruction, so just record them and check
-				 * during BB construction if we need to split a block purely for
-				 * end-of-exception purposes.
-				 */
-				tryEndInsts.add( handlers[i].startInst + handlers[i].instCount );
-			}
+		for( Iterator<DexTryCatch> ebit = handlers.iterator(); ebit.hasNext(); ) {
+			DexTryCatch handler = ebit.next();
+			worklist.add(handler.getStartPC());
+			worklist.add(handler.getHandlerPC());
+			/* The end of the try block is handled specially - it may not
+			 * actually be a real instruction, so just record them and check
+			 * during BB construction if we need to split a block purely for
+			 * end-of-exception purposes.
+			 */
+			tryEndInsts.add( handler.getEndPC() );
 		}
 		
 		do {
@@ -151,7 +159,7 @@ public class DexMethodBody {
 			worklist.remove(0);
 			if( blocks.containsKey(item) )
 				continue;
-			blocks.put(item, new DexBasicBlock());
+			blocks.put(item, new DexBasicBlock(this));
 			
 			int target = item.intValue();
 			while(target < code.length) {
@@ -205,12 +213,13 @@ public class DexMethodBody {
 			/* Read instructions up to the end of the block */
 			while( pc < nextpc ) {
 				if( pc != startpc && tryEndInsts.contains(pc) ) {
-					DexBasicBlock split = new DexBasicBlock("bb" + bbcount);
+					DexBasicBlock split = new DexBasicBlock(this, "bb" + bbcount);
 					bb.addSuccessor(split);
 					bb = split;
 					added.add(split);
 					bbcount++;
-					nextbb.setName( "bb" + bbcount );
+					if( nextbb != null )
+						nextbb.setName( "bb" + bbcount );
 				}
 				DexInstruction ins = new DexInstruction(this, pc);
 				bb.add(ins);
@@ -230,11 +239,15 @@ public class DexMethodBody {
 						bb.addSuccessor(succ);
 					}
 					break;
+				} else if( ins.isReturn() || ins.isThrow() ) {
+					exitBlocks.add(bb);
+					fallthrough = false;
+					break;
 				}
 				pc += ins.size();
 			}
 			if( fallthrough ) {
-				bb.addSuccessor(nextbb);
+				bb.addFallthroughSuccessor(nextbb);
 			}
 		
 			pc = nextpc;
@@ -248,6 +261,31 @@ public class DexMethodBody {
 		for( Iterator<DexBasicBlock> bbit = added.iterator(); bbit.hasNext(); ) {
 			bb = bbit.next();
 			blocks.put(bb.getPC(), bb);
+		}
+		
+		/* Check exception handlers for end labels that may not actually belong
+		 * to any basic block (i.e. they point past the end of code), and create
+		 * empty blocks for them.
+		 */
+		for( Iterator<DexTryCatch> ebit = handlers.iterator(); ebit.hasNext(); ) {
+			DexTryCatch handler = ebit.next();
+			if( getBlockForPC(handler.getEndPC()) == null ) {
+				blocks.put(handler.getEndPC(), new DexBasicBlock(this));
+			}
+		}
+		
+		/* Add exception blocks to the final block they're protecting - this
+		 * isn't strictly sound, but it should be sufficient for our purposes
+		 */
+		for( Iterator<DexBasicBlock> bbit = iterator(); bbit.hasNext(); ) {
+			bb = bbit.next();
+			for( Iterator<DexTryCatch> ebit = handlers.iterator(); ebit.hasNext(); ) {
+				DexTryCatch handler = ebit.next();
+				if( handler.getEndPC() == bb.getEndPC() ) {
+					DexBasicBlock handlerbb = handler.getHandlerBlock();
+					bb.addExceptionSuccessor(handlerbb);
+				}
+			}
 		}
 	}
 }

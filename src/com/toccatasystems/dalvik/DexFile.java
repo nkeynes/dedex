@@ -75,33 +75,7 @@ public class DexFile extends DexItem {
 	}
 	
 	public String getDisplayTypeName( int idx ) {
-		return formatTypeName(getTypeName(idx));
+		return DexType.format(getTypeName(idx));
 	}
-	
-	public String getDisplayFieldName( int idx ) {
-		DexField field = getField(idx);
-		return formatTypeName(field.getClassType()) + "." + field.getName();
-	}
-	
-	public String getDisplayMethodSignature( int idx ) {
-		return formatMethodSignature(getMethod(idx));
-	}
-	
-	public static String formatMethodSignature( DexMethod method ) {
-		StringBuilder builder = new StringBuilder("(");
-		builder.append(formatTypeName(method.getReturnType()));
-		builder.append(")");
-		builder.append(formatTypeName(method.getClassType()));
-		builder.append(".");
-		builder.append(method.getName());
-		builder.append("(");
-		for( int i=0; i<method.getNumParamTypes(); i++ ) {
-			if( i != 0 )
-				builder.append(",");
-			builder.append(formatTypeName(method.getParamType(i)));
-		}
-		builder.append(")");
-		return builder.toString();
-	}
-	
+
 }

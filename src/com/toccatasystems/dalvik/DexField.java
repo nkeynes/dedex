@@ -21,6 +21,10 @@ public class DexField extends DexItem {
 	
 	public String getClassType() { return classType; }
 	
+	public String getDisplayName( ) {
+		return DexType.format(classType) + "." + getName();
+	}
+	
 	protected void setInitializer( DexValue init ) { this.initValue = init; }
 	
 	public DexValue getInitializer( ) { return initValue; }

@@ -68,7 +68,7 @@ public class DexValue {
 			}
 			return "{" + StringUtils.join(str, ", ") + "}";
 		case TYPE:
-			return DexItem.formatTypeName(value.toString());
+			return DexType.format(value.toString());
 		case STRING:
 			return "\"" + StringEscapeUtils.escapeJava(value.toString()) + "\"";
 		case METHOD:

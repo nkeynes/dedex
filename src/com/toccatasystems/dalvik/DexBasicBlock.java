@@ -1,27 +1,38 @@
 package com.toccatasystems.dalvik;
 
 import java.util.ArrayList;
+import java.util.Formatter;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
+import com.toccatasystems.util.ChainIterator;
+import com.toccatasystems.util.ReverseListIterator;
+
 public class DexBasicBlock {
+	private DexMethodBody parent;
 	private String name;
+	private DexBasicBlock fallthrough;
 	private List<DexInstruction> instructions;
 	private List<DexBasicBlock> predecessors;
 	private List<DexBasicBlock> successors;
+	private List<DexBasicBlock> exceptionSuccessors; 
 	
-	public DexBasicBlock() {
+	public DexBasicBlock(DexMethodBody parent) {
+		this.parent = parent;
 		instructions = new ArrayList<DexInstruction>();
 		predecessors = new LinkedList<DexBasicBlock>();
 		successors = new LinkedList<DexBasicBlock>();
+		exceptionSuccessors = new LinkedList<DexBasicBlock>();
 	}
 	
-	public DexBasicBlock(String name) {
+	public DexBasicBlock(DexMethodBody parent, String name) {
+		this.parent = parent;
 		this.name = name;
 		instructions = new ArrayList<DexInstruction>();
 		predecessors = new LinkedList<DexBasicBlock>();
 		successors = new LinkedList<DexBasicBlock>();
+		exceptionSuccessors = new LinkedList<DexBasicBlock>();
 	}
 	
 	protected void setName( String name ) {
@@ -32,13 +43,28 @@ public class DexBasicBlock {
 		return this.name;
 	}
 	
+	public DexMethodBody getParent() {
+		return this.parent;
+	}
+	
 	protected void add( DexInstruction ins ) {
 		instructions.add(ins);
+		ins.setParent(this);
 	}
 	
 	protected void addSuccessor( DexBasicBlock next ) {
 		successors.add(next);
 		next.predecessors.add(this);
+	}
+	
+	protected void addFallthroughSuccessor( DexBasicBlock next ) {
+		addSuccessor(next);
+		this.fallthrough = next;
+	}
+	
+	protected void addExceptionSuccessor( DexBasicBlock handler ) {
+		this.exceptionSuccessors.add(handler);
+		handler.predecessors.add(this);
 	}
 
 	public DexInstruction first() {
@@ -75,6 +101,39 @@ public class DexBasicBlock {
 		return instructions.iterator();
 	}
 	
+	public Iterator<DexInstruction> reverseIterator() {
+		return new ReverseListIterator<DexInstruction>(instructions);
+	}
+	
+	/**
+	 * @return an iterator over the instructions in the block, initially
+	 * pointing at the specified instruction.
+	 */
+	public Iterator<DexInstruction> iterator(DexInstruction start) {
+		for( int i=0; i<instructions.size(); i++ ) {
+			if( instructions.get(i) == start ) {
+				return instructions.listIterator(i);
+			}
+		}
+		return instructions.listIterator(instructions.size());
+	}
+	
+	public Iterator<DexInstruction> reverseIterator(DexInstruction start) {
+		for( int i=0; i<instructions.size(); i++ ) {
+			if( instructions.get(i) == start ) {
+				return new ReverseListIterator<DexInstruction>(instructions, i);
+			}
+		}
+		return new ReverseListIterator<DexInstruction>(instructions,0);
+	}		
+	
+	/**
+	 * @return true if the block has no instructions
+	 */
+	public boolean isEmpty() {
+		return instructions.isEmpty();
+	}
+	
 	/**
 	 * @return the instruction at the given index.
 	 */
@@ -106,4 +165,88 @@ public class DexBasicBlock {
 		return successors.get(idx);
 	}
 	
+	public DexBasicBlock getFallthroughSuccessor() {
+		return fallthrough;
+	}
+
+	public boolean hasExceptionSuccessors() {
+		return exceptionSuccessors.size() != 0;
+	}
+	
+	public int getNumExceptionSuccessors() {
+		return exceptionSuccessors.size();
+	}
+	
+	public DexBasicBlock getExceptionSuccessor( int idx ) {
+		return exceptionSuccessors.get(idx);
+	}
+	
+	public Iterator<DexBasicBlock> exceptionIterator() {
+		return exceptionSuccessors.iterator();
+	}
+	
+	/**
+	 * Iterate over both normal and exception successors together
+	 */
+	public Iterator<DexBasicBlock> allSuccIterator() {
+		return new ChainIterator<DexBasicBlock>(successors,exceptionSuccessors);
+	}
+	
+	public String toString() {
+		return name;
+	}
+	
+	public void disassemble( Formatter fmt, boolean verbose ) {
+		fmt.format("    %s:", getName());
+		if( getNumPredecessors() != 0 ) {
+			fmt.format( "    ; preds: " );
+			int count = 0;
+			for( Iterator<DexBasicBlock> pit = predIterator(); pit.hasNext(); ) {
+				fmt.format( (count == 0 ? "%s" : ", %s"), pit.next().getName() );
+				count++;
+			}
+		}
+		fmt.format("\n");
+		for( Iterator<DexInstruction> ii = iterator(); ii.hasNext(); ) {
+			DexInstruction inst = ii.next();
+			if( verbose ) {
+				int pc = inst.getPC();
+				fmt.format("        %04X: ", pc);
+				/* Print the raw data */
+				for( int j=0; j<5; j++ ) {
+					if( j < inst.size() ) {
+						fmt.format("%04X ", inst.getUShort(j));
+					} else {
+						fmt.format( "     " );
+					}
+				}
+			} else {
+				fmt.format( "        " );
+			}
+			fmt.format( "%s\n%s", inst.disassemble(),
+					inst.formatTable("            "));
+		}
+		if( hasExceptionSuccessors() ) {
+			fmt.format( "            ; exceptions: " );
+			int count = 0;
+			for( Iterator<DexBasicBlock> eit = exceptionIterator(); eit.hasNext(); ) {
+				DexBasicBlock ebb = eit.next();
+				fmt.format( (count == 0 ? "%s" : ", %s"), ebb.getName() );
+				count++;
+			}
+			fmt.format("\n");
+		}
+	}
+	
+	public void disassemble( Appendable app, boolean verbose ) {
+		Formatter fmt = new Formatter(app);
+		disassemble(fmt, verbose);
+	}
+	
+	public String disassemble( boolean verbose ) {
+		StringBuilder builder = new StringBuilder();
+		Formatter fmt = new Formatter(builder);
+		disassemble(fmt, verbose);
+		return builder.toString();
+	}
 }

@@ -1,245 +1,42 @@
 package com.toccatasystems.dalvik;
 
-import java.io.PrintStream;
 import java.util.Formatter;
 
 import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.lang.StringUtils;
+
+import static com.toccatasystems.dalvik.DexOpcodes.*;
 
 /**
- * Opcode specifications, based on document at
+ * Class representing a single dalvik instruction, which has an opcode, 
+ * 0 or more register operands, and 0 or 1 non-register operands. 
+ * 
+ * Based on documents at
  *   http://www.netmite.com/android/mydroid/dalvik/docs/instruction-formats.html and
  *   http://www.netmite.com/android/mydroid/dalvik/docs/dalvik-bytecode.html
  */
 
 public class DexInstruction {
-	/** Opcode constants */
-	public final static int NOP  = 0x00;
-	public final static int MOVE = 0x01;
-	public final static int MOVE_FROM16 = 0x02;
-	public final static int MOVE_16 = 0x03;
-	public final static int MOVE_WIDE = 0x04;
-	public final static int MOVE_WIDE_FROM16 = 0x05;
-	public final static int MOVE_WIDE16 = 0x06;
-	public final static int MOVE_OBJECT = 0x07;
-	public final static int MOVE_OBJECT_FROM16 = 0x08;
-	public final static int MOVE_OBJECT16 = 0x09;
-	public final static int MOVE_RESULT = 0x0A;
-	public final static int MOVE_RESULT_WIDE = 0x0B;
-	public final static int MOVE_RESULT_OBJECT = 0x0C;
-	public final static int MOVE_EXCEPTION = 0x0D;
-	public final static int RETURN_VOID = 0x0E;
-	public final static int RETURN = 0x0F;
-	public final static int RETURN_WIDE = 0x10;
-	public final static int RETURN_OBJECT = 0x11;
-	public final static int CONST4 = 0x12;
-	public final static int CONST16 = 0x13;
-	public final static int CONST = 0x14;
-	public final static int CONST_HIGH16 = 0x15;
-	public final static int CONST_WIDE16 = 0x16;
-	public final static int CONST_WIDE32 = 0x17;
-	public final static int CONST_WIDE = 0x18;
-	public final static int CONST_WIDE_HIGH16 = 0x19;
-	public final static int CONST_STRING = 0x1A;
-	public final static int CONST_STRING_JUMBO = 0x1B;
-	public final static int CONST_CLASS = 0x1C;
-	public final static int MONITOR_ENTER = 0x1D;
-	public final static int MONITOR_EXIT = 0x1E;
-	public final static int CHECK_CAST = 0x1F;
-	public final static int INSTANCE_OF = 0x20;
-	public final static int ARRAY_LENGTH = 0x21;
-	public final static int NEW_INSTANCE = 0x22;
-	public final static int NEW_ARRAY = 0x23;
-	public final static int FILLED_NEW_ARRAY = 0x24;
-	public final static int FILLED_NEW_ARRAY_RANGE = 0x25;
-	public final static int FILL_ARRAY_DATA = 0x26;
-	public final static int THROW = 0x27;
-	public final static int GOTO = 0x28;
-	public final static int GOTO16 = 0x29;
-	public final static int GOTO32 = 0x2A;
-	public final static int PACKED_SWITCH = 0x2B;
-	public final static int SPARSE_SWITCH = 0x2C;
-	public final static int CMPL_FLOAT = 0x2D;
-	public final static int CMPG_FLOAT = 0x2E;
-	public final static int CMPL_DOUBLE = 0x2F;
-	public final static int CMPG_DOUBLE = 0x30;
-	public final static int CMP_LONG = 0x31;
-	public final static int IF_EQ = 0x32;
-	public final static int IF_NE = 0x33;
-	public final static int IF_LT = 0x34;
-	public final static int IF_GE = 0x35;
-	public final static int IF_GT = 0x36;
-	public final static int IF_LE = 0x37;
-	public final static int IF_EQZ = 0x38;
-	public final static int IF_NEZ = 0x39;
-	public final static int IF_LTZ = 0x3A;
-	public final static int IF_GEZ = 0x3B;
-	public final static int IF_GTZ = 0x3C;
-	public final static int IF_LEZ = 0x3D;
-	public final static int AGET = 0x44;
-	public final static int AGET_WIDE = 0x45;
-	public final static int AGET_OBJECT = 0x46;
-	public final static int AGET_BOOLEAN = 0x47;
-	public final static int AGET_BYTE = 0x48;
-	public final static int AGET_CHAR = 0x49;
-	public final static int AGET_SHORT = 0x4A;
-	public final static int APUT = 0x4B;
-	public final static int APUT_WIDE = 0x4C;
-	public final static int APUT_OBJECT = 0x4D;
-	public final static int APUT_BOOLEAN = 0x4E;
-	public final static int APUT_BYTE = 0x4F;
-	public final static int APUT_CHAR = 0x50;
-	public final static int APUT_SHORT = 0x51;
-	public final static int IGET = 0x52;
-	public final static int IGET_WIDE = 0x53;
-	public final static int IGET_OBJECT = 0x54;
-	public final static int IGET_BOOLEAN = 0x55;
-	public final static int IGET_BYTE = 0x56;
-	public final static int IGET_CHAR = 0x57;
-	public final static int IGET_SHORT = 0x58;
-	public final static int IPUT = 0x59;
-	public final static int IPUT_WIDE = 0x5A;
-	public final static int IPUT_OBJECT = 0x5B;
-	public final static int IPUT_BOOLEAN = 0x5C;
-	public final static int IPUT_BYTE = 0x5D;
-	public final static int IPUT_CHAR = 0x5E;
-	public final static int IPUT_SHORT = 0x5F;
-	public final static int SGET = 0x60;
-	public final static int SGET_WIDE = 0x61;
-	public final static int SGET_OBJECT = 0x62;
-	public final static int SGET_BOOLEAN = 0x63;
-	public final static int SGET_BYTE = 0x64;
-	public final static int SGET_CHAR = 0x65;
-	public final static int SGET_SHORT = 0x66;
-	public final static int SPUT = 0x67;
-	public final static int SPUT_WIDE = 0x68;
-	public final static int SPUT_OBJECT = 0x69;
-	public final static int SPUT_BOOLEAN = 0x6A;
-	public final static int SPUT_BYTE = 0x6B;
-	public final static int SPUT_CHAR = 0x6C;
-	public final static int SPUT_SHORT = 0x6D;
-	public final static int INVOKE_VIRTUAL = 0x6E;
-	public final static int INVOKE_SUPER = 0x6F;
-	public final static int INVOKE_DIRECT = 0x70;
-	public final static int INVOKE_STATIC = 0x71;
-	public final static int INVOKE_INTERFACE = 0x72;
-	public final static int INVOKE_VIRTUAL_RANGE = 0x74;
-	public final static int INVOKE_SUPER_RANGE = 0x75;
-	public final static int INVOKE_DIRECT_RANGE = 0x76;
-	public final static int INVOKE_STATIC_RANGE = 0x77;
-	public final static int INVOKE_INTERFACE_RANGE = 0x78;
-	public final static int NEG_INT = 0x7B;
-	public final static int NOT_INT = 0x7C;
-	public final static int NEG_LONG = 0x7D;
-	public final static int NOT_LONG = 0x7E;
-	public final static int NEG_FLOAT = 0x7F;
-	public final static int NEG_DOUBLE = 0x80;
-	public final static int INT_TO_LONG = 0x81;
-	public final static int INT_TO_FLOAT = 0x82;
-	public final static int INT_TO_DOUBLE = 0x83;
-	public final static int LONG_TO_INT = 0x84;
-	public final static int LONG_TO_FLOAT = 0x85;
-	public final static int LONG_TO_DOUBLE = 0x86;
-	public final static int FLOAT_TO_INT = 0x87;
-	public final static int FLOAT_TO_LONG = 0x88;
-	public final static int FLOAT_TO_DOUBLE = 0x89;
-	public final static int DOUBLE_TO_INT = 0x8A;
-	public final static int DOUBLE_TO_LONG = 0x8B;
-	public final static int DOUBLE_TO_FLOAT = 0x8C;
-	public final static int INT_TO_BYTE = 0x8D;
-	public final static int INT_TO_CHAR = 0x8E;
-	public final static int INT_TO_SHORT = 0x8F;
-	public final static int ADD_INT = 0x90;
-	public final static int SUB_INT = 0x91;
-	public final static int MUL_INT = 0x92;
-	public final static int DIV_INT = 0x93;
-	public final static int REM_INT = 0x94;
-	public final static int AND_INT = 0x95;
-	public final static int OR_INT = 0x96;
-	public final static int XOR_INT = 0x97;
-	public final static int SHL_INT = 0x98;
-	public final static int SHR_INT = 0x99;
-	public final static int USHR_INT = 0x9A;
-	public final static int ADD_LONG = 0x9B;
-	public final static int SUB_LONG = 0x9C;
-	public final static int MUL_LONG = 0x9D;
-	public final static int DIV_LONG = 0x9E;
-	public final static int REM_LONG = 0x9F;
-	public final static int AND_LONG = 0xA0;
-	public final static int OR_LONG = 0xA1;
-	public final static int XOR_LONG = 0xA2;
-	public final static int SHL_LONG = 0xA3;
-	public final static int SHR_LONG = 0xA4;
-	public final static int USHR_LONG = 0xA5;
-	public final static int ADD_FLOAT = 0xA6;
-	public final static int SUB_FLOAT = 0xA7;
-	public final static int MUL_FLOAT = 0xA8;
-	public final static int DIV_FLOAT = 0xA9;
-	public final static int REM_FLOAT = 0xAA;
-	public final static int ADD_DOUBLE = 0xAB;
-	public final static int SUB_DOUBLE = 0xAC;
-	public final static int MUL_DOUBLE = 0xAD;
-	public final static int DIV_DOUBLE = 0xAE;
-	public final static int REM_DOUBLE = 0xAF;
-	public final static int ADD_INT_2ADDR = 0xB0;
-	public final static int SUB_INT_2ADDR = 0xB1;
-	public final static int MUL_INT_2ADDR = 0xB2;
-	public final static int DIV_INT_2ADDR = 0xB3;
-	public final static int REM_INT_2ADDR = 0xB4;
-	public final static int AND_INT_2ADDR = 0xB5;
-	public final static int OR_INT_2ADDR= 0xB6;
-	public final static int XOR_INT_2ADDR = 0xB7;
-	public final static int SHL_INT_2ADDR = 0xB8;
-	public final static int SHR_INT_2ADDR = 0xB9;
-	public final static int USHR_INT_2ADDR = 0xBA;
-	public final static int ADD_LONG_2ADDR = 0xBB;
-	public final static int SUB_LONG_2ADDR = 0xBC;
-	public final static int MUL_LONG_2ADDR = 0xBD;
-	public final static int DIV_LONG_2ADDR = 0xBE;
-	public final static int REM_LONG_2ADDR = 0xBF;
-	public final static int AND_LONG_2ADDR = 0xC0;
-	public final static int OR_LONG_2ADDR = 0xC1;
-	public final static int XOR_LONG_2ADDR = 0xC2;
-	public final static int SHL_LONG_2ADDR = 0xC3;
-	public final static int SHR_LONG_2ADDR = 0xC4;
-	public final static int USHR_LONG_2ADDR = 0xC5;
-	public final static int ADD_FLOAT_2ADDR = 0xC6;
-	public final static int SUB_FLOAT_2ADDR = 0xC7;
-	public final static int MUL_FLOAT_2ADDR = 0xC8;
-	public final static int DIV_FLOAT_2ADDR = 0xC9;
-	public final static int REM_FLOAT_2ADDR = 0xCA;
-	public final static int ADD_DOUBLE_2ADDR = 0xCB;
-	public final static int SUB_DOUBLE_2ADDR = 0xCC;
-	public final static int MUL_DOUBLE_2ADDR = 0xCD;
-	public final static int DIV_DOUBLE_2ADDR = 0xCE;
-	public final static int REM_DOUBLE_2ADDR = 0xCF;
-	public final static int ADD_INT_LIT16 = 0xD0;
-	public final static int RSUB_INT_LIT16 = 0xD1;
-	public final static int MUL_INT_LIT16 = 0xD2;
-	public final static int DIV_INT_LIT16 = 0xD3;
-	public final static int REM_INT_LIT16 = 0xD4;
-	public final static int AND_INT_LIT16 = 0xD5;
-	public final static int OR_INT_LIT16 = 0xD6;
-	public final static int XOR_INT_LIT16 = 0xD7;
-	public final static int ADD_INT_LIT8 = 0xD8;
-	public final static int RSUB_INT_LIT8 = 0xD9;
-	public final static int MUL_INT_LIT8 = 0xDA;
-	public final static int DIV_INT_LIT8 = 0xDB;
-	public final static int REM_INT_LIT8 = 0xDC;
-	public final static int AND_INT_LIT8 = 0xDD;
-	public final static int OR_INT_LIT8 = 0xDE;
-	public final static int XOR_INT_LIT8 = 0xDF;
-	public final static int SHL_INT_LIT8 = 0xE0;
-	public final static int SHR_INT_LIT8 = 0xE1;
-	public final static int USHR_INT_LIT8 = 0xE2;
+	
+	private final static int OPTYPE_NONE = 0;
+	private final static int OPTYPE_INT = 5;
+	private final static int OPTYPE_TARGET = 10;
+	private final static int OPTYPE_STRING = 11;
+	private final static int OPTYPE_TYPE = 12;
+	private final static int OPTYPE_FIELD = 13;
+	private final static int OPTYPE_METHOD = 14;
+	
+
+	
 
 	/* Addressing modes. The names are per Dalvik documentation, such that
 	 *   First digit is the number of 16-bit words used by the instruction
 	 *   Second digit is the number of registers encoded (R = range)
 	 *   Third letter is an operand type:
 	 *   1   B = immediate signed byte
-	 *   2   C = constant pool index
+	 *   2   H64 = immediate signed high-order 16-bits of a 64-bit value
 	 *   3   F = interface constant (statically linked only)
-	 *   4   H = immediate signed high-order 16-bits of a 32 or 64-bit value
+	 *   4   H = immediate signed high-order 16-bits of a 32-bit value
 	 *   5   I = immediate signed int or float
 	 *   6   L = immediate signed long or double
 	 *   7   M = method constant (statically linked only)
@@ -251,6 +48,7 @@ public class DexInstruction {
 	 *   C     = Type index
 	 *   D     = Field index
 	 *   E     = Method index
+	 *   F     = 
 	 */
 	private final static int M_DATA = 0x1FF; /* data rather than instruction */
 	private final static int M_10T = 0x10A; /* AA|op  : op +AA */
@@ -263,6 +61,7 @@ public class DexInstruction {
 	private final static int M_21Ctype   = 0x21C; /* AA|op BBBB : op vAA, type@BBBB */
 	private final static int M_21Cfield  = 0x21D; /* AA|op BBBB : op vAA, field@BBBB */
 	private final static int M_21H = 0x214; /* AA|op BBBB : op vAA, #+BBBB0000(00000000) */
+	private final static int M_21H64 = 0x212;
 	private final static int M_21S = 0x219; /* AA|op BBBB : op vAA, #+BBBB */
 	private final static int M_21T = 0x21A; /* AA|op BBBB : op vAA, +BBBB */
 	private final static int M_22B = 0x221; /* AA|op CC|BB : op vAA, vBB, #+CC */
@@ -293,9 +92,17 @@ public class DexInstruction {
 	private static class I {
 		public String mnemonic;
 		public int mode;
+		public DexType[] mayThrowTypes;
+		
 		public I(String mnemonic, int mode) {
 			this.mnemonic = mnemonic;
 			this.mode = mode;
+		}
+		
+		public I(String mnemonic, int mode, DexType[] mayThrowTypes ) {
+			this.mnemonic = mnemonic;
+			this.mode = mode;
+			this.mayThrowTypes = mayThrowTypes;
 		}
 		
 		public String getMnemonic() {
@@ -313,8 +120,27 @@ public class DexInstruction {
 			return this.mode;
 		}
 		
+		public boolean mayThrow() {
+			return mayThrowTypes != null;
+		}
+		
+		public DexType[] getThrows() {
+			return mayThrowTypes;
+		}
+		
+		public int getOperandType() {
+			int type = (this.mode & 0x00F); 
+			if( type > OPTYPE_NONE && type < OPTYPE_TARGET )
+				return OPTYPE_INT;
+			else return type;
+		}
+		
 	}
 
+	private final static DexType[] THROWS_ANYTHING = { };
+	private final static DexType[] THROWS_NULL_PTR = { DexType.NULL_POINTER_EXCEPTION };
+	private final static DexType[] THROWS_CLASS_CAST = { DexType.CLASS_CAST_EXCEPTION };
+	private final static DexType[] MONITOR_EXIT_THROWS = { DexType.NULL_POINTER_EXCEPTION, DexType.ILLEGAL_MONITOR_STATE_EXCEPTION };
 	/**
 	 * Core instruction table mapping opcode to name + operand form
 	 */
@@ -327,8 +153,8 @@ public class DexInstruction {
 		/* 10 */
 		new I("return-wide", M_11X), new I("return-object", M_11X),	new I("const/4", M_11N), new I("const/16", M_21S),
 		new I("const", M_31I), new I("const/high16", M_21H), new I("const-wide/16", M_21S), new I("const-wide/32", M_31I),
-		new I("const-wide", M_51L), new I("const-wide/high16", M_21H), new I("const-string", M_21Cstring), new I("const-string/jumbo", M_31Cstring),
-		new I("const-class", M_21Ctype), new I("monitor-enter", M_11X), new I("monitor-exit", M_11X), new I("check-cast", M_21Ctype),
+		new I("const-wide", M_51L), new I("const-wide/high16", M_21H64), new I("const-string", M_21Cstring), new I("const-string/jumbo", M_31Cstring),
+		new I("const-class", M_21Ctype), new I("monitor-enter", M_11X, THROWS_NULL_PTR), new I("monitor-exit", M_11X, MONITOR_EXIT_THROWS), new I("check-cast", M_21Ctype, THROWS_CLASS_CAST),
 		/* 20 */
 		new I("instance-of", M_22Ctype), new I("array-length", M_12X), new I("new-instance", M_21Ctype), new I("new-array", M_22Ctype),
 		new I("filled-new-array", M_35Ctype), new I("filled-new-array/range", M_3RCtype), new I("fill-array-data", M_31T), new I("throw", M_11X),
@@ -408,10 +234,6 @@ public class DexInstruction {
 	private final static int highByte( short word ) {
 		return ((int)word >> 8) & 0xFF;
 	}
-	private final static int sextHighByte( short word ) {
-		return ((int)word >> 8);
-	}
-	
 	private final static int highNibble( short word ) {
 		return ((int)word >> 12) & 0x0F;
 	}
@@ -426,9 +248,14 @@ public class DexInstruction {
 	}
 	
 	private DexMethodBody method;
+	private DexBasicBlock parent;
 	private I instruction;
 	private int pc;
 	private short[]code;
+	private int registers[];
+	private long constOperand;
+	private DexType[]registerTypes;
+	
 	
 	/**
 	 * Construct a new DexInstruction from the given position in the method body
@@ -474,17 +301,32 @@ public class DexInstruction {
 			System.arraycopy(code, posn, this.code, 0, words);
 		}
 		System.arraycopy(code, target, this.code, words, extra);
+		
+		parseOperands();
+		this.registerTypes = new DexType[registers.length];
+	}
+	
+	protected void setParent( DexBasicBlock parent ) {
+		this.parent = parent;
+	}
+	
+	public DexBasicBlock getParent() {
+		return parent;
 	}
 	
 	public int getPC() {
 		return pc;
 	}
 	
+	public String getHexPC() {
+		return StringUtils.leftPad(Integer.toHexString(pc), 4, '0');
+	}
+	
 	/**
 	 * @return the number of words used by the instruction
 	 */
 	public int size() {
-		return code.length;
+		return instruction.getNumWords();
 	}
 	
 	public int getOpcode() {
@@ -496,7 +338,23 @@ public class DexInstruction {
 	}
 	
 	public int getNumRegisters() {
-		return instruction.getNumRegisters();
+		return registers.length;
+	}
+	
+	public int getRegister(int idx) {
+		return registers[idx];
+	}
+	
+	public DexType getRegisterType( int idx ) {
+		return registerTypes[idx];
+	}
+	
+	public void setRegisterType( int idx, DexType value ) {
+		registerTypes[idx] = value;
+	}
+	
+	public void checkRegisterType( int idx, DexType type ) throws ParseException {
+		registerTypes[idx].checkType(type);
 	}
 	
 	/**
@@ -536,7 +394,6 @@ public class DexInstruction {
 	public boolean isThrow() {
 		return getOpcode() == THROW;
 	}
-		
 	
 	public int getBranchTarget() {
 		switch( instruction.mode ) {
@@ -564,6 +421,26 @@ public class DexInstruction {
 		}
 	}
 	
+	public DexBasicBlock getBranchBlock() {
+		return method.getBlockForPC(getBranchTarget());
+	}
+	
+	public String getStringOperand() {
+		return method.getFile().getString((int)constOperand);
+	}
+	
+	public String getTypeOperand() {
+		return method.getFile().getTypeName((int)constOperand);
+	}
+	
+	public DexMethod getMethodOperand() {
+		return method.getFile().getMethod((int)constOperand);
+	}
+	
+	public DexField getFieldOperand() {
+		return method.getFile().getField((int)constOperand);
+	}
+	
 	public int[] getSwitchTargets() {
 		int opcode = getOpcode();
 		int start = size();
@@ -586,76 +463,104 @@ public class DexInstruction {
 		}
 	}
 	
+	public DexBasicBlock[] getSwitchBlocks() {
+		int [] addrs = getSwitchTargets();
+		if( addrs != null ) {
+			DexBasicBlock []blocks = new DexBasicBlock[addrs.length];
+			for( int i=0; i<addrs.length; i++ ) {
+				blocks[i] = method.getBlockForPC(addrs[i]);
+			}
+			return blocks;
+		} else {
+			return null;
+		}
+	}
+	
+	/**
+	 * Return the minimum key value for a switch statement. Result is undefined
+	 * for any other opcode.
+	 */
+	public int getMinSwitchKey() {
+		return getInt(size()+2);
+	}
+
+	/**
+	 * Return the maximum key value for a switch statement. Result is undefined
+	 * for any other opcode.
+	 */
+	public int getMaxSwitchKey() {
+		int start = size();
+		if( getOpcode() == PACKED_SWITCH ) {
+			return getInt(start+2) + getUShort(start+1) - 1;
+		} else {
+			int tableSize = getUShort(start+1);
+			return getInt(start + 2 + (tableSize*2));
+		} 
+	}
+	
+	public int[] getSwitchKeys() {
+		int start = size();
+		if( getOpcode() == PACKED_SWITCH ) {
+			int first = getInt(start+2);
+			int size = getUShort(start+1);
+			int[] result = new int[size];
+			for( int i=0; i<size; i++ ) {
+				result[i] = first + i;
+			}
+			return result;
+		} else {
+			int size = getUShort(start+1);
+			int []result = new int[size];
+			for( int i=0; i<size; i++ ) {
+				result[i] = pc + getInt(start + 4 + i*2);
+			}
+			return result;
+		}
+	}
+	
+	public DexType[] getThrows() {
+		return instruction.getThrows();
+	}
+		
+		
 	public String formatOperands( ) {
 		StringBuilder result = new StringBuilder();
 		Formatter fmt = new Formatter(result);
-		int b;
-		int args[];
-		int mode = instruction.getMode();
-		short mainWord = code[0];
-		switch( mode ) {
-		case M_10T: fmt.format("%s (%04X)", getBranchLabel(), getBranchTarget()); break;
-		case M_10X: break; /* No operands */
-		case M_DATA: break;
-		case M_11N: fmt.format("v%d, #%02X", thirdNibble(mainWord), sextHighNibble(mainWord) ); break;
-		case M_11X: fmt.format("v%d", highByte(mainWord)); break;
-		case M_12X: fmt.format("v%d, v%d", thirdNibble(mainWord), highNibble(mainWord) ); break;
-		case M_20T: fmt.format("%s (%04X)", getBranchLabel(), getBranchTarget()); break;
-		case M_21Cstring: fmt.format("v%d, %s", highByte(mainWord), getString16(1)); break;
-		case M_21Ctype: fmt.format("v%d, %s", highByte(mainWord), getTypeId(1)); break;
-		case M_21Cfield: fmt.format("v%d, %s", highByte(mainWord), getFieldId(1)); break;
-		case M_21H: fmt.format("v%d, #%04X0000(00000000)", highByte(mainWord), getUShort(1)); break;
-		case M_21S: fmt.format("v%d, #%04X", highByte(mainWord), getShort(1)); break;
-		case M_21T: fmt.format("v%d, %s (%04X)", highByte(mainWord), getBranchLabel(), getBranchTarget()); break;
-		case M_22B: fmt.format("v%d, v%d, #%02X", highByte(mainWord), getULowByte(1), getSHighByte(1)); break; 
-		case M_22Cfield: fmt.format("v%d, v%d, %s", thirdNibble(mainWord), highNibble(mainWord), getFieldId(1)); break;
-		case M_22Ctype:  fmt.format("v%d, v%d, %s", thirdNibble(mainWord), highNibble(mainWord), getTypeId(1)); break;
-		case M_22S: fmt.format("v%d, v%d, #%04X", thirdNibble(mainWord), highNibble(mainWord), getShort(1)); break;
-		case M_22T: fmt.format("v%d, v%d, %s (%04X)", thirdNibble(mainWord), highNibble(mainWord), getBranchLabel(), getBranchTarget() ); break;
-		case M_22X: fmt.format("v%d, v%d", highByte(mainWord), getUShort(1)); break;
-		case M_23X: fmt.format("v%d, v%d, v%d", highByte(mainWord), getULowByte(1), getUHighByte(1)); break;
-		case M_30T: fmt.format("%s (%08X)", getBranchLabel(), getBranchTarget()); break;
-		case M_31Cstring: fmt.format("v%d, %s", highByte(mainWord), getString32(1)); break;
-		case M_31I: fmt.format("v%d, #%08X", highByte(mainWord), getInt(1)); break;
-		case M_31T: fmt.format("v%d, %s (%08X)", highByte(mainWord), getBranchLabel(), getBranchTarget()); break;
-		case M_32X: fmt.format("v%d, v%d", getUShort(1), getUShort(2)); break;
-		case M_35Cmethod: /* B|A|op CCCC G|F|E|D : [B=count] op {vD, vE, vF, vG, vA}, (meth|type|kind)@CCCC */
-		case M_35Ctype:
-			b = highNibble(mainWord);
-			if( b > 5 ) b = 5;
-			args = new int[5];
-			args[0] = code[2] & 0x0F;
-			args[1] = (code[2] >> 4) & 0x0F;
-			args[2] = (code[2] >> 8) & 0x0F;
-			args[3] = (code[2] >> 12) & 0x0F;
-			args[4] = thirdNibble(mainWord);
-			for( int i=0; i<b; i++ ) {
-				fmt.format("v%d, ", args[i], args);
+		for( int i=0; i<registers.length; i++ ) {
+			if( i != 0 )
+				fmt.format( ", " );
+			fmt.format("v%d", registers[i]);
+			DexType type = registerTypes[i];
+			if( type != null ) {
+				fmt.format(" [%s]", type.format());
 			}
-			if( mode == M_35Ctype ) {
-				fmt.format("%s", getTypeId(1));
-			} else {
-				fmt.format("%s", getMethodId(1));
-			}
-			break;
-		case M_3RCmethod:  /* AA|op BBBB CCCC : op {vCCCC .. vNNNN}, (meth|type)@BBBB */
-		case M_3RCtype:
-			b = highByte(mainWord);
-			for( int i=0; i<b; i++ ) {
-				fmt.format("v%d, ", getUShort(2)+i);
-			}
-			if( mode == M_3RCtype ) {
-				fmt.format("%s", getTypeId(1));
-			} else {
-				fmt.format("%s", getMethodId(1));
-			}
-			break;
-				
-		case M_51L:  /* AA|op BBBBl BBBB BBBB BBBBh : op vAA, #+BBBBBBBBBBBBBBBB */
-		default:
-			fmt.format("Unhandled operand format");
 		}
-		
+		int optype = instruction.getOperandType();
+		if( optype != OPTYPE_NONE ) {
+			if( registers.length != 0 )
+				fmt.format( ", " );
+
+			switch( instruction.getOperandType() ) {
+			case OPTYPE_STRING:
+				fmt.format( "\"%s\"", StringEscapeUtils.escapeJava(getStringOperand()));
+				break;
+			case OPTYPE_TYPE:
+				fmt.format( "%s", DexType.format(getTypeOperand()));
+				break;
+			case OPTYPE_FIELD:
+				fmt.format("%s", getFieldOperand().getDisplayName());
+				break;
+			case OPTYPE_METHOD:
+				fmt.format( "%s", getMethodOperand().getDisplaySignature() );
+				break;
+			case OPTYPE_TARGET:
+				fmt.format( "%s (%04x)", getBranchLabel(), constOperand) ;
+				break;
+			default:
+				fmt.format( "%d", constOperand );
+				break;
+			}
+		}
 		return result.toString();
 	}
 	
@@ -677,7 +582,8 @@ public class DexInstruction {
 					if( indent != null ) {
 						fmt.format("%s", indent);
 					}
-					fmt.format("%d: %08X\n", first+i, pc + getInt(start + 4 + i*2));
+					int targetpc = pc + getInt(start + 4 + i*2);
+					fmt.format("%d: %s (%04X)\n", first+i, method.getBlockForPC(targetpc), targetpc);
 				}
 				break;
 			case 0x0200: /* sparse-switch */
@@ -686,7 +592,8 @@ public class DexInstruction {
 					if( indent != null ) {
 						fmt.format("%s", indent);
 					}
-					fmt.format("%d: %08X\n", getInt(start + 4 + i*2), pc + getInt(start + 4 + i*2 + size*2));
+					int targetpc = pc + getInt(start + 4 + i*2 + size*2);
+					fmt.format("%d: %s (%04X)\n", getInt(start + 4 + i*2), method.getBlockForPC(targetpc), targetpc); 
 				}
 				break;
 			case 0x0300: /* fill-array-data */
@@ -700,6 +607,15 @@ public class DexInstruction {
 		return builder.toString();
 	}
 
+	public long getLong( int posn ) {
+		return (((long)code[posn]) & 0xFFFF) | ((((long)code[posn+1]) & 0xFFFF) << 16) |
+			((((long)code[posn+2]) & 0xFFFF) << 32) | ((((long)code[posn+3]) & 0xFFFF) << 48);
+	}
+	
+	public long getUInt( int posn ) {
+		return (((long)code[posn]) & 0xFFFF) | ((((long)code[posn+1]) & 0xFFFF) << 16);
+	}
+	
 	public int getInt( int posn ) {
 		return (((int)code[posn]) & 0xFFFF) | (((int)code[posn+1]) << 16);
 	}
@@ -723,35 +639,140 @@ public class DexInstruction {
 	private int getSHighByte( int posn ) {
 		return ((int)code[posn]) >> 8;
 	}
-	
-	private int getUHighNibble( int posn ) {
-		return (((int)code[posn]) >> 12) & 0x0F;
-	}
-	
-	private int getSHighNibble( int posn ) {
-		return ((int)code[posn]) >> 12;
-	}
-	
-	private String getString16( int posn ) {
-		return formatStringId( getUShort(posn) );
-	}
-	
-	private String getString32( int posn ) {
-		return formatStringId( getInt(posn) );
-	}
-	
-	private String getTypeId( int posn ) {
-		return method.getFile().getDisplayTypeName( ((int)code[posn])&0xFFFF );
-	}
-	private String getFieldId( int posn ) {
-		return method.getFile().getDisplayFieldName( ((int)code[posn])&0xFFFF );
-	}
-	private String getMethodId( int posn ) {
-		return method.getFile().getDisplayMethodSignature( ((int)code[posn])&0xFFFF );
-	}
-	
+
 	private String formatStringId( int word ) {
 		return "\"" + StringEscapeUtils.escapeJava(method.getFile().getString( word )) + "\"";
 	}
 
+
+	private void parseOperands( ) {
+		int b;
+		if( instruction.getNumRegisters() < 5 ) 
+			registers = new int[instruction.getNumRegisters()];
+	
+		int mode = instruction.getMode();
+		short mainWord = code[0];
+		switch( mode ) {
+		case M_10T:
+			constOperand = pc + getSHighByte(0);
+			break;
+		case M_10X: break;
+		case M_DATA: break;
+		case M_11N:
+			registers[0] = thirdNibble(mainWord);
+			constOperand = sextHighNibble(mainWord);
+			break;
+		case M_11X: 
+			registers[0] = highByte(mainWord);
+			break;
+		case M_12X:
+			registers[0] = thirdNibble(mainWord);
+			registers[1] = highNibble(mainWord);
+			break;
+		case M_20T:
+			constOperand = pc + getShort(1);
+			break;
+		case M_21Cstring:
+		case M_21Ctype:
+		case M_21Cfield:
+			registers[0] = highByte(mainWord);
+			constOperand = getUShort(1);
+			break;
+		case M_21H:
+			registers[0] = highByte(mainWord);
+			constOperand = getUShort(1) << 16;
+			break;
+		case M_21H64:
+			registers[0] = highByte(mainWord);
+			constOperand = ((long)getUShort(1)) << 48;
+			break;
+		case M_21S:
+			registers[0] = highByte(mainWord);
+			constOperand = getShort(1);
+			break;
+		case M_21T:
+			registers[0] = highByte(mainWord);
+			constOperand = pc + getShort(1);
+			break;
+		case M_22B:
+			registers[0] = highByte(mainWord);
+			registers[1] = getULowByte(1);
+			constOperand = getSHighByte(1);
+			break;
+		case M_22Cfield:
+		case M_22Ctype:
+			registers[0] = thirdNibble(mainWord);
+			registers[1] = highNibble(mainWord);
+			constOperand = getUShort(1);
+			break;
+		case M_22S:
+			registers[0] = thirdNibble(mainWord);
+			registers[1] = highNibble(mainWord);
+			constOperand = getShort(1);
+			break;
+		case M_22T:
+			registers[0] = thirdNibble(mainWord);
+			registers[1] = highNibble(mainWord);
+			constOperand = pc + getShort(1);
+			break;
+		case M_22X:
+			registers[0] = highByte(mainWord);
+			registers[1] = getUShort(1);
+			break;
+		case M_23X:
+			registers[0] = highByte(mainWord);
+			registers[1] = getULowByte(1);
+			registers[2] = getUHighByte(1);
+			break;
+		case M_30T:
+			constOperand = pc + getInt(1);
+			break;
+		case M_31Cstring:
+			registers[0] = highByte(mainWord);
+			constOperand = getUInt(1);
+			break;
+		case M_31I:
+			registers[0] = highByte(mainWord);
+			constOperand = getInt(1);
+			break;
+		case M_31T:
+			registers[0] = highByte(mainWord);
+			constOperand = pc + getInt(1);
+			break;
+		case M_32X:
+			registers[0] = getUShort(1);
+			registers[1] = getUShort(2);
+			break;
+		case M_35Cmethod:
+		case M_35Ctype:
+			b = highNibble(mainWord);
+			if( b >= 5 ) b = 5;
+			registers = new int[b];
+			switch( b ) {
+			case 5: registers[4] = thirdNibble(mainWord);
+			case 4: registers[3] = (code[2] >> 12) & 0x0F;
+			case 3: registers[2] = (code[2] >> 8) & 0x0F;
+			case 2: registers[1] = (code[2] >> 4) & 0x0F;
+			case 1: registers[0] = code[2] & 0x0F;
+			default:
+				break;
+			}
+			constOperand = getUShort(1);
+			break;
+		case M_3RCmethod:
+		case M_3RCtype:
+			b = highByte(mainWord);
+			registers = new int[b];
+			for( int i=0; i<b; i++ ) {
+				registers[i] = getUShort(2) + i;
+			}
+			constOperand = getUShort(1);
+			break;
+		case M_51L:
+			registers[0] = highByte(mainWord);
+			constOperand = getLong(1);
+			break;
+			
+		}
+	}
 }

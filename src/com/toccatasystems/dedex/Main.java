@@ -6,6 +6,7 @@ import java.util.Iterator;
 import org.apache.commons.cli.*;
 
 import com.toccatasystems.dalvik.*;
+import com.toccatasystems.dalvik.analysis.TypeAssignment;
 
 /**
  * 
@@ -102,6 +103,14 @@ public class Main {
 				System.err.println( "Error: Unable to load " + file + ": " + e.getMessage() );
 				e.printStackTrace();
 				System.exit(1);
+			}
+			
+			TypeAssignment type = new TypeAssignment();
+			try {
+				type.assignTypes(dex);
+			} catch( Exception e ) {
+				System.err.println( "Type verification failed!" );
+				e.printStackTrace();
 			}
 			
 			if( cl.hasOption('D') ) {

@@ -76,7 +76,8 @@ public class DexMethod extends DexItem {
 			param.add(ann[i]);
 		}
 	}
-	
+
+	public boolean isStatic() { return (flags & STATIC) != 0; }
 	public String getReturnType() { return returnType; }
 	public int getNumParamTypes() { return paramTypes.length; }
 	public String getParamType(int idx) { return paramTypes[idx]; }
@@ -89,6 +90,32 @@ public class DexMethod extends DexItem {
 		buf.append(returnType);
 		return buf.toString();
 	}
+	
+	/**
+	 * @return the number of parameter types at the actual call level, which
+	 * includes the implicit this argument.
+	 */
+	public int getNumCallingParamTypes() {
+		if( isStatic() )
+			return paramTypes.length;
+		else
+			return paramTypes.length+1;
+	}
+	
+	/**
+	 * @return the parameter type at the actual call level specified by the
+	 * given index. Parameter 0 is always 'this' for non-static methods.
+	 */
+	public String getCallingParamType( int idx ) {
+		if( isStatic() ) {
+			return paramTypes[idx];
+		} else if( idx == 0 ) {
+			return classType;
+		} else {
+			return paramTypes[idx-1];
+		}
+	}
+	
 	public DexMethodBody getBody() { return code; }
 	public boolean hasBody() { return code != null; }
 	
@@ -97,6 +124,23 @@ public class DexMethod extends DexItem {
 	
 	public String[] getThrows() {
 		return getAnnotationStringArray(DexAnnotation.DALVIK_THROWS, "value");
+	}
+	
+	public String getDisplaySignature( ) {
+		StringBuilder builder = new StringBuilder("(");
+		builder.append(DexType.format(returnType));
+		builder.append(")");
+		builder.append(DexType.format(classType));
+		builder.append(".");
+		builder.append(getName());
+		builder.append("(");
+		for( int i=0; i<getNumParamTypes(); i++ ) {
+			if( i != 0 )
+				builder.append(",");
+			builder.append(DexType.format(getParamType(i)));
+		}
+		builder.append(")");
+		return builder.toString();
 	}
 	
 	public String[] getInternalThrows() {
