@@ -168,6 +168,8 @@ public class DexItem {
 	 * @return
 	 */
 	public static String formatInternalName( String typeName ) {
+		if( typeName == null )
+			return null;
 		int idx = typeName.indexOf(';');
 		if( typeName.charAt(0) == 'L' && idx != -1 ) {
 			return typeName.substring(1,idx);

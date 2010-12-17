@@ -413,11 +413,11 @@ public class TypeAssignment extends ForwardDataflowAnalysis<TypeAssignment.Param
 				outtype = DexType.INT;
 				break;
 			case NEW_INSTANCE: 
-				outtype = new DexType(inst.getTypeOperand());
+				outtype = inst.getTypeOperand();
 				break;
 			case NEW_ARRAY:
 				inst.checkRegisterType(1, DexType.INT);
-				outtype = new DexType(inst.getTypeOperand());
+				outtype = inst.getTypeOperand();
 				break;
 			case AGET: case AGET_WIDE: case AGET_OBJECT: case AGET_BOOLEAN: 
 			case AGET_BYTE: case AGET_CHAR: case AGET_SHORT:

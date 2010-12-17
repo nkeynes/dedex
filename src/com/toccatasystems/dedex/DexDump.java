@@ -79,8 +79,8 @@ public class DexDump implements DexVisitor {
 		
 		String modifier = clz.getFlagsString();
 		out.print( modifier + clz.getKind() + " " + currClassName);
-		if( clz.getSuperclass() != null ) 
-			out.print(" extends " + formatTypeName(clz.getSuperclass()));
+		if( clz.getSuperName() != null ) 
+			out.print(" extends " + formatTypeName(clz.getSuperName()));
 		String interfaces[] = clz.getInterfaces();
 		if( interfaces != null && interfaces.length != 0 ) {
 			out.print(" implements " );

@@ -28,24 +28,28 @@ public class DexToClassTransformer implements DexVisitor {
 	private final static int IN_FIELD = 2;
 	private final static int IN_METHOD = 3;
 	
+	DexFile file;
 	ClassOutputWriter output;
 	ClassWriter writer;
 	FieldVisitor fv;
 	MethodVisitor mv;
+	BytecodeTransformer bct;
 	int state;
 	
 	public DexToClassTransformer( ClassOutputWriter output ) {
 		this.output = output;
+		this.bct = new BytecodeTransformer();
 		state = IN_FILE;
 	}
 	
 	public void enterFile(DexFile file) {
 		state = IN_FILE;
+		this.file = file;
 		output.begin(file.getName());
 	}
 
 	public void enterClass(DexClass clz) {
-		writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES|ClassWriter.COMPUTE_MAXS);
+		writer = new DexClassWriter(file, ClassWriter.COMPUTE_FRAMES|ClassWriter.COMPUTE_MAXS);
 		writer.visit(49, clz.getFlags(), clz.getInternalName(), clz.getSignature(), clz.getInternalSuperName(),
 				clz.getInternalInterfaces() );
 		
@@ -148,8 +152,7 @@ public class DexToClassTransformer implements DexVisitor {
 	}
 
 	public void visitMethodBody(DexMethodBody body) {
-		// TODO Auto-generated method stub
-		
+		bct.transform(body, mv);
 	}
 
 	public void leaveMethod(DexMethod method) {

@@ -57,8 +57,15 @@ public class DexClass extends DexItem {
 		visitor.leaveClass(this);
 	}
 	
-	public String getSuperclass() {
+	public String getSuperName() {
 		return superclass;
+	}
+	
+	public DexClass getSuperclass() {
+		if( superclass == null )
+			return null;
+		else
+			return getFile().getClass(formatInternalName(superclass));
 	}
 	
 	public String[] getInterfaces() {
@@ -151,4 +158,67 @@ public class DexClass extends DexItem {
 			return virtualMethods[idx - directMethods.length];
 		}
 	}
+	
+	public boolean isAssignableTo( DexClass other ) {
+		if( other.name.equals(name) )
+			return true;
+		for( int i=0; i<interfaces.length; i++ ) {
+			if( interfaces[i].equals(other.name) )
+				return true;
+		}
+		if( superclass != null ) {
+			DexClass superclz = getSuperclass();
+			if( superclz != null ) {
+				return superclz.isAssignableTo(other);
+			}
+			if( superclass.equals(other.name) )
+				return true;
+		}
+		return false;
+	}
+	
+	public boolean isAssignableFrom( DexClass other ) {
+		return other.isAssignableTo(this);
+	}
+	
+	public boolean isAssignableTo( Class<?> other ) {
+		String otherName = other.getName();
+		if( getInternalName().equals(otherName) ) 
+			return true; /* Unlikely, but just in case */
+		for( int i=0; i<interfaces.length; i++ ) {
+			if( formatInternalName(interfaces[i]).equals(otherName) )
+				return true;
+		}
+		if( superclass != null ) {
+			DexClass superclz = getSuperclass();
+			if( superclz != null ) {
+				return superclz.isAssignableTo(other);
+			}
+			if( getInternalSuperName().equals(otherName) )
+				return true;
+			try {
+				Class<?> clz = Class.forName(getInternalSuperName().replace('/', '.'));
+				return other.isAssignableFrom(clz);
+			} catch( ClassNotFoundException e ) {
+			}
+		}
+		return false;
+	}
+	
+	/**
+	 * @return The first non-dex superclass, if one can be found. Otherwise null.
+	 */
+	public Class<?> getJavaSuperclass() {
+		if( superclass == null )
+			return null;
+		DexClass superclz = getSuperclass();
+		if( superclz != null )
+			return superclz.getJavaSuperclass();
+		try {
+			return Class.forName(getInternalSuperName().replace('/', '.'));
+		} catch( ClassNotFoundException e ) {
+			return null;
+		}
+	}
+		
 }

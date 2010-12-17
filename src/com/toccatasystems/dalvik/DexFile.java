@@ -1,5 +1,8 @@
 package com.toccatasystems.dalvik;
 
+import java.util.Map;
+import java.util.TreeMap;
+
 public class DexFile extends DexItem {
 
 	private String []stringTable;
@@ -9,6 +12,8 @@ public class DexFile extends DexItem {
 	
 	private DexClass []classDefTable;
 	
+	private Map<String,DexClass> classLookupTable;
+	
 	public DexFile( String filename, String []stringTable, String []typeNameTable,
 			DexField[] fieldTable, DexMethod []methodTable, DexClass[] classDefTable ) {
 		super(filename, 0);
@@ -17,8 +22,10 @@ public class DexFile extends DexItem {
 		this.fieldTable = fieldTable;
 		this.methodTable = methodTable;
 		this.classDefTable = classDefTable;
+		this.classLookupTable = new TreeMap<String,DexClass>();
 		for( int i=0; i<this.classDefTable.length; i++ ) {
 			this.classDefTable[i].setParent(this);
+			classLookupTable.put(classDefTable[i].getInternalName(), classDefTable[i]);
 		}
 	}
 
@@ -60,6 +67,10 @@ public class DexFile extends DexItem {
 
 	public DexClass getClass(int idx) {
 		return classDefTable[idx];
+	}
+	
+	public DexClass getClass( String internalName ) {
+		return classLookupTable.get(internalName);
 	}
 	
 	public void visit(DexVisitor visitor) {

@@ -224,7 +224,7 @@ public class DexInstruction {
 		new I("undef-f0", M_10X), new I("undef-f1", M_10X), new I("undef-f2", M_10X), new I("undef-f3", M_10X), 
 		new I("undef-f4", M_10X), new I("undef-f5", M_10X), new I("undef-f6", M_10X), new I("undef-f7", M_10X), 
 		new I("undef-f8", M_10X), new I("undef-f9", M_10X), new I("undef-fa", M_10X), new I("undef-fb", M_10X), 
-		new I("undef-fc", M_10X), new I("undef-fd", M_10X), new I("undef-fe", M_10X), new I("undef-ff", M_10X) 
+		new I("undef-fc", M_10X), new I("undef-fd", M_10X), new I("undef-fe", M_10X), new I("undef-ff", M_10X),
 	};
 	
 	private final static I NOPCODES[] = {
@@ -251,6 +251,7 @@ public class DexInstruction {
 	private DexBasicBlock parent;
 	private I instruction;
 	private int pc;
+	private int opcode;
 	private short[]code;
 	private int registers[];
 	private long constOperand;
@@ -266,7 +267,7 @@ public class DexInstruction {
 		this.method = body;
 		this.pc = posn;
 		short code[] = body.getCode();
-		int opcode = code[posn] & 0xFF;
+		opcode = code[posn] & 0xFF;
 		
 		instruction = OPCODES[opcode];
 		if( opcode == NOP ) {
@@ -306,6 +307,24 @@ public class DexInstruction {
 		this.registerTypes = new DexType[registers.length];
 	}
 	
+	/**
+	 * Construct a synthetic instruction directly.
+	 * @param body
+	 * @param opcode
+	 * @param registers
+	 * @param operand
+	 */
+	public DexInstruction( DexMethodBody body, int posn, int opcode, int registers[], long operand ) {
+		this.method = body;
+		this.pc = posn;
+		this.opcode = opcode;
+		this.instruction = OPCODES[opcode];
+		this.code = new short[0];
+		this.registers = registers;
+		this.constOperand = operand;
+		this.registerTypes = new DexType[registers.length];
+	}
+	
 	protected void setParent( DexBasicBlock parent ) {
 		this.parent = parent;
 	}
@@ -330,7 +349,7 @@ public class DexInstruction {
 	}
 	
 	public int getOpcode() {
-		return code[0] & 0xFF;
+		return opcode;
 	}
 	
 	public String getMnemonic() {
@@ -391,6 +410,15 @@ public class DexInstruction {
 		    opcode != 0x73; /* Undef in the middle */
 	}
 	
+	/**
+	 * @return true if the instruction is a synthetic one inserted by the 
+	 * transformations.
+	 * @return
+	 */
+	public boolean isSynthetic() {
+		return size() == 0;
+	}
+	
 	public boolean isThrow() {
 		return getOpcode() == THROW;
 	}
@@ -425,12 +453,28 @@ public class DexInstruction {
 		return method.getBlockForPC(getBranchTarget());
 	}
 	
+	public Integer getIntOperand() {
+		return new Integer((int)constOperand);
+	}
+	
+	public Long getLongOperand() {
+		return new Long(constOperand);
+	}
+	
+	public Float getFloatOperand() {
+		return new Float(Float.intBitsToFloat((int)constOperand));
+	}
+	
+	public Double getDoubleOperand() {
+		return new Double(Double.longBitsToDouble(constOperand));
+	}
+	
 	public String getStringOperand() {
 		return method.getFile().getString((int)constOperand);
 	}
 	
-	public String getTypeOperand() {
-		return method.getFile().getTypeName((int)constOperand);
+	public DexType getTypeOperand() {
+		return new DexType(method.getFile().getTypeName((int)constOperand));
 	}
 	
 	public DexMethod getMethodOperand() {
@@ -545,7 +589,7 @@ public class DexInstruction {
 				fmt.format( "\"%s\"", StringEscapeUtils.escapeJava(getStringOperand()));
 				break;
 			case OPTYPE_TYPE:
-				fmt.format( "%s", DexType.format(getTypeOperand()));
+				fmt.format( "%s", getTypeOperand().format());
 				break;
 			case OPTYPE_FIELD:
 				fmt.format("%s", getFieldOperand().getDisplayName());
@@ -638,10 +682,6 @@ public class DexInstruction {
 	
 	private int getSHighByte( int posn ) {
 		return ((int)code[posn]) >> 8;
-	}
-
-	private String formatStringId( int word ) {
-		return "\"" + StringEscapeUtils.escapeJava(method.getFile().getString( word )) + "\"";
 	}
 
 

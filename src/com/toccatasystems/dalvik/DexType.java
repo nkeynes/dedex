@@ -143,6 +143,10 @@ public class DexType implements Comparable<DexType> {
 		return name;
 	}
 	
+	public String getInternalName() {
+		return DexItem.formatInternalName(name);
+	}
+	
 	public void setName( String name ) {
 		this.name = name;
 	}

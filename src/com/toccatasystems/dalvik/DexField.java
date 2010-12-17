@@ -21,6 +21,8 @@ public class DexField extends DexItem {
 	
 	public String getClassType() { return classType; }
 	
+	public String getInternalClassType() { return formatInternalName(classType); }
+	
 	public String getDisplayName( ) {
 		return DexType.format(classType) + "." + getName();
 	}

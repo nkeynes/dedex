@@ -52,6 +52,25 @@ public class DexBasicBlock {
 		ins.setParent(this);
 	}
 	
+	protected void insertBefore( DexInstruction ins, DexInstruction before ) {
+		for( int i=0; i<instructions.size(); i++ ) {
+			if( instructions.get(i) == before ) {
+				instructions.add(i, ins);
+				return;
+			}
+		}
+		instructions.add(ins);
+	}
+	
+	protected void insertAfter( DexInstruction ins, DexInstruction after ) {
+		for( int i=0; i<instructions.size(); i++ ) {
+			if( instructions.get(i) == after ) {
+				instructions.add(i+1, ins);
+			}
+		}
+		instructions.add(ins);
+	}
+
 	protected void addSuccessor( DexBasicBlock next ) {
 		successors.add(next);
 		next.predecessors.add(this);
@@ -69,6 +88,18 @@ public class DexBasicBlock {
 
 	public DexInstruction first() {
 		return instructions.get(0);
+	}
+	
+	public DexInstruction getNext( DexInstruction after ) {
+		Iterator<DexInstruction> it;
+		for( it = instructions.iterator(); it.hasNext(); ) {
+			if( it.next() == after )
+				break;
+		}
+		if( it.hasNext() ) 
+			return it.next();
+		else
+			return null;
 	}
 	
 	public DexInstruction getTerminator() {
