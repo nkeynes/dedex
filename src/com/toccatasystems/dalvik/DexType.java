@@ -19,6 +19,15 @@ public class DexType implements Comparable<DexType> {
 	public final static DexType OBJECT = new DexType("Ljava/lang/Object;");
 	public final static DexType CLASS = new DexType("Ljava/lang/Class;");
 	public final static DexType STRING = new DexType("Ljava/lang/String;");
+	public final static DexType ABYTE = new DexType("[B");
+	public final static DexType ACHAR = new DexType("[C");
+	public final static DexType ASHORT = new DexType("[S");
+	public final static DexType AINT = new DexType("[I");
+	public final static DexType ALONG = new DexType("[J");
+	public final static DexType ABOOLEAN = new DexType("[Z");
+	public final static DexType AOBJECT = new DexType("[Ljava/lang/Object;");
+	
+	
 	
 	/** The const* bytecodes are polymorphic, so represent them as the
 	 * special types below until they can be flattened to a real type.
@@ -156,7 +165,7 @@ public class DexType implements Comparable<DexType> {
 	}
 	
 	public String format() {
-		return format(name);
+		return Integer.toHexString(super.hashCode()) + ":" + format(name);
 	}
 	
 	public int hashCode() {
@@ -176,7 +185,7 @@ public class DexType implements Comparable<DexType> {
 	}
 	
 	public boolean isObject() {
-		return name.startsWith("L");
+		return name.startsWith("L") || name.startsWith("[");
 	}
 	
 	public boolean equals( Object o ) {
@@ -191,7 +200,7 @@ public class DexType implements Comparable<DexType> {
 	 * @return true if the type is a primitive that fits in a single 32-bit word. 
 	 */
 	public boolean isPrimWord() {
-		return name == "B" || name == "C" || name == "S" || name == "I" || name == "Z" || name == "const32";
+		return name == "B" || name == "C" || name == "S" || name == "I" || name == "Z" || name == "F" || name == "const32";
 	}
 	
 	public boolean isPrimDWord() {
@@ -205,38 +214,31 @@ public class DexType implements Comparable<DexType> {
 			return null;
 		}
 	}
-	
+
 	/**
-	 * Ensure the receiver is compatible with the given type. If the types are the same,
-	 * this does nothing. If the receiver is a vague type (ie a constant),
-	 * and it is compatible with the given type, it is replaced with the
-	 * supplied type. Otherwise, an exception is thrown.
-	 * @param type
+	 * Return the element type of an array type. If the element type cannot be
+	 * determined, returns defaultType instead.
 	 */
-	public void checkType( DexType type ) throws ParseException {
-		if( name == "const32" ) {
-			if( type.name != "D" && type.name != "J" ) {
-				setName(type.name);
-				return;
-			}
-		} else if( name == "const64" ) {
-			if( type.name == "D" || type.name == "J" ) {
-				setName(type.name);
-				return;
-			}
-		}
-		if( name != type.name && !(isPrimWord() && type.isPrimWord()) ) {
-			/* Assume all objects are compatible, and all arrays are
-			 * as well - we don't have the full type hierachy here,
-			 * so we can't really decide this properly
-			 */
-			if( !(isObject() && type.isObject()) &&
-			    !(isArray() && type.isArray()) ) {
-				throw new ParseException("Type verification failure: Expected " + type + ", but was " + this);
-			}
+	public DexType getElementType( String defaultType ) {
+		if( name.startsWith("[") ) {
+			return new DexType(name.substring(1));
+		} else {
+			return new DexType(defaultType);
 		}
 	}
-	
+
+	/**
+	 * Return the element type of an array type. If the element type cannot be
+	 * determined, returns defaultType instead.
+	 */
+	public DexType getElementType( DexType defaultType ) {
+		if( name.startsWith("[") ) {
+			return new DexType(name.substring(1));
+		} else {
+			return defaultType;
+		}
+	}
+
 	/**
 	 * Returns the human readable (java source) version of the given type name.
 	 * @param typeName

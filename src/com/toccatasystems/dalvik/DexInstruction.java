@@ -1,6 +1,10 @@
 package com.toccatasystems.dalvik;
 
 import java.util.Formatter;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
+import java.util.TreeSet;
 
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
@@ -82,6 +86,10 @@ public class DexInstruction {
 	private final static int M_3RCmethod = 0x3FE; /* AA|op BBBB CCCC : op {vCCCC .. vNNNN}, method@BBBB */
 	private final static int M_51L = 0x516; /* AA|op BBBBl BBBB BBBB BBBBh : op vAA, #+BBBBBBBBBBBBBBBB */
 
+	private final static int ARG0_USE = 0x00000;
+	private final static int ARG0_DEF = 0x10000;
+	private final static int ARG0_USEDEF = 0x20000;
+	
 	/* Forms that should never appear in unlinked .dex files */
 	private final static int M_22CS = 0x1222; /* B|A|op CCCC : op vA, vB, fieldoff@CCCC */
 	private final static int M_35MS = 0x1357; /* B|A|op CCCC G|F|E|D : [B=count] op {vD, vE, vF, vG, vA}, vtaboff@CCCC */
@@ -117,7 +125,11 @@ public class DexInstruction {
 		}
 		
 		public int getMode() {
-			return this.mode;
+			return this.mode & 0x1FFF;
+		}
+		
+		public int getArg0Use() {
+			return this.mode & 0x30000;
 		}
 		
 		public boolean mayThrow() {
@@ -148,75 +160,75 @@ public class DexInstruction {
 		/* 00 */
 		new I("nop", M_10X), new I("move", M_12X), new I("move/from16", M_22X), new I("move/16", M_32X),
 		new I("move-wide", M_12X), new I("move-wide/from16", M_22X), new I("move-wide/16", M_32X), new I("move-object", M_12X),
-		new I("move-object/from16", M_22X), new I("move-object/16", M_32X), new I("move-result", M_11X), new I("move-result-wide", M_11X),
-		new I("move-result-object", M_11X), new I("move-exception", M_11X),	new I("return-void", M_10X), new I("return", M_11X),
+		new I("move-object/from16", M_22X), new I("move-object/16", M_32X), new I("move-result", M_11X|ARG0_DEF), new I("move-result-wide", M_11X|ARG0_DEF),
+		new I("move-result-object", M_11X|ARG0_DEF), new I("move-exception", M_11X|ARG0_DEF),	new I("return-void", M_10X), new I("return", M_11X),
 		/* 10 */
-		new I("return-wide", M_11X), new I("return-object", M_11X),	new I("const/4", M_11N), new I("const/16", M_21S),
-		new I("const", M_31I), new I("const/high16", M_21H), new I("const-wide/16", M_21S), new I("const-wide/32", M_31I),
-		new I("const-wide", M_51L), new I("const-wide/high16", M_21H64), new I("const-string", M_21Cstring), new I("const-string/jumbo", M_31Cstring),
-		new I("const-class", M_21Ctype), new I("monitor-enter", M_11X, THROWS_NULL_PTR), new I("monitor-exit", M_11X, MONITOR_EXIT_THROWS), new I("check-cast", M_21Ctype, THROWS_CLASS_CAST),
+		new I("return-wide", M_11X), new I("return-object", M_11X),	new I("const/4", M_11N|ARG0_DEF), new I("const/16", M_21S|ARG0_DEF),
+		new I("const", M_31I|ARG0_DEF), new I("const/high16", M_21H|ARG0_DEF), new I("const-wide/16", M_21S|ARG0_DEF), new I("const-wide/32", M_31I|ARG0_DEF),
+		new I("const-wide", M_51L|ARG0_DEF), new I("const-wide/high16", M_21H64|ARG0_DEF), new I("const-string", M_21Cstring|ARG0_DEF), new I("const-string/jumbo", M_31Cstring|ARG0_DEF),
+		new I("const-class", M_21Ctype|ARG0_DEF), new I("monitor-enter", M_11X, THROWS_NULL_PTR), new I("monitor-exit", M_11X, MONITOR_EXIT_THROWS), new I("check-cast", M_21Ctype, THROWS_CLASS_CAST),
 		/* 20 */
-		new I("instance-of", M_22Ctype), new I("array-length", M_12X), new I("new-instance", M_21Ctype), new I("new-array", M_22Ctype),
+		new I("instance-of", M_22Ctype|ARG0_DEF), new I("array-length", M_12X|ARG0_DEF), new I("new-instance", M_21Ctype|ARG0_DEF), new I("new-array", M_22Ctype|ARG0_DEF),
 		new I("filled-new-array", M_35Ctype), new I("filled-new-array/range", M_3RCtype), new I("fill-array-data", M_31T), new I("throw", M_11X),
 		new I("goto", M_10T), new I("goto/16", M_20T), new I("goto/32", M_30T), new I("packed-switch", M_31T),
-		new I("sparse-switch", M_31T), new I("cmpl-float", M_23X), new I("cmpg-float", M_23X), new I("cmpl-double", M_23X),
+		new I("sparse-switch", M_31T), new I("cmpl-float", M_23X|ARG0_DEF), new I("cmpg-float", M_23X|ARG0_DEF), new I("cmpl-double", M_23X|ARG0_DEF),
 		/* 30 */
-		new I("cmpg-double", M_23X), new I("cmp-long", M_23X), new I("if-eq", M_22T), new I("if-ne", M_22T),
+		new I("cmpg-double", M_23X|ARG0_DEF), new I("cmp-long", M_23X|ARG0_DEF), new I("if-eq", M_22T), new I("if-ne", M_22T),
 		new I("if-lt", M_22T), new I("if-ge", M_22T), new I("if-gt", M_22T), new I("if-le", M_22T),
 		new I("if-eqz", M_21T), new I("if-nez", M_21T), new I("if-ltz", M_21T), new I("if-gez", M_21T),
 		new I("if-gtz", M_21T), new I("if-lez", M_21T), new I("undef-3e", M_10X), new I("undef-3f", M_10X),
 		/* 40 */
 		new I("undef-40", M_10X), new I("undef-41", M_10X), new I("undef-42", M_10X), new I("undef-43", M_10X),
-		new I("aget", M_23X), new I("aget-wide", M_23X), new I("aget-object", M_23X), new I("aget-boolean", M_23X),
-		new I("aget-byte", M_23X), new I("aget-char", M_23X), new I("aget-short", M_23X), new I("aput", M_23X),
+		new I("aget", M_23X|ARG0_DEF), new I("aget-wide", M_23X|ARG0_DEF), new I("aget-object", M_23X|ARG0_DEF), new I("aget-boolean", M_23X|ARG0_DEF),
+		new I("aget-byte", M_23X|ARG0_DEF), new I("aget-char", M_23X|ARG0_DEF), new I("aget-short", M_23X|ARG0_DEF), new I("aput", M_23X),
 		new I("aput-wide", M_23X), new I("aput-object", M_23X), new I("aput-boolean", M_23X), new I("aput-byte", M_23X),
 		/* 50 */
-		new I("aput-char", M_23X), new I("aput-short", M_23X), new I("iget", M_22Cfield), new I("iget-wide", M_22Cfield),
-		new I("iget-object", M_22Cfield), new I("iget-boolean", M_22Cfield), new I("iget-byte", M_22Cfield), new I("iget-char", M_22Cfield),
-		new I("iget-short", M_22Cfield), new I("iput", M_22Cfield), new I("iput-wide", M_22Cfield), new I("iput-object", M_22Cfield),
+		new I("aput-char", M_23X), new I("aput-short", M_23X), new I("iget", M_22Cfield|ARG0_DEF), new I("iget-wide", M_22Cfield|ARG0_DEF),
+		new I("iget-object", M_22Cfield|ARG0_DEF), new I("iget-boolean", M_22Cfield|ARG0_DEF), new I("iget-byte", M_22Cfield|ARG0_DEF), new I("iget-char", M_22Cfield|ARG0_DEF),
+		new I("iget-short", M_22Cfield|ARG0_DEF), new I("iput", M_22Cfield), new I("iput-wide", M_22Cfield), new I("iput-object", M_22Cfield),
 		new I("iput-boolean", M_22Cfield), new I("iput-byte", M_22Cfield), new I("iput-char", M_22Cfield), new I("iput-short", M_22Cfield),
 		/* 60 */
-		new I("sget", M_21Cfield), new I("sget-wide", M_21Cfield), new I("sget-object", M_21Cfield), new I("sget-boolean", M_21Cfield), 
-		new I("sget-byte", M_21Cfield), new I("sget-char", M_21Cfield), new I("sget-short", M_21Cfield), new I("sput", M_21Cfield), 
+		new I("sget", M_21Cfield|ARG0_DEF), new I("sget-wide", M_21Cfield|ARG0_DEF), new I("sget-object", M_21Cfield|ARG0_DEF), new I("sget-boolean", M_21Cfield|ARG0_DEF), 
+		new I("sget-byte", M_21Cfield|ARG0_DEF), new I("sget-char", M_21Cfield|ARG0_DEF), new I("sget-short", M_21Cfield|ARG0_DEF), new I("sput", M_21Cfield), 
 		new I("sput-wide", M_21Cfield), new I("sput-object", M_21Cfield), new I("sput-boolean", M_21Cfield), new I("sput-byte", M_21Cfield), 
 		new I("sput-char", M_21Cfield), new I("sput-short", M_21Cfield), new I("invoke-virtual", M_35Cmethod), new I("invoke-super", M_35Cmethod),
 		/* 70 */
 		new I("invoke-direct", M_35Cmethod), new I("invoke-static", M_35Cmethod), new I("invoke-interface", M_35Cmethod), new I("undef-73", M_10X),
 		new I("invoke-virtual/range", M_3RCmethod), new I("invoke-super/range", M_3RCmethod), new I("invoke-direct/range", M_3RCmethod), new I("invoke-static/range", M_3RCmethod),
-		new I("invoke-interface/range", M_3RCmethod), new I("undef-79", M_10X), new I("undef-7a", M_10X), new I("neg-int", M_12X),
-		new I("not-int", M_12X), new I("neg-long", M_12X), new I("not-long", M_12X), new I("neg-float", M_12X),
+		new I("invoke-interface/range", M_3RCmethod), new I("undef-79", M_10X), new I("undef-7a", M_10X), new I("neg-int", M_12X|ARG0_DEF),
+		new I("not-int", M_12X|ARG0_DEF), new I("neg-long", M_12X|ARG0_DEF), new I("not-long", M_12X|ARG0_DEF), new I("neg-float", M_12X|ARG0_DEF),
 		/* 80 */
-		new I("neg-double", M_12X), new I("int-to-long", M_12X), new I("int-to-float", M_12X), new I("int-to-double", M_12X),
-		new I("long-to-int", M_12X), new I("long-to-float", M_12X), new I("long-to-double", M_12X), new I("float-to-int", M_12X),
-		new I("float-to-long", M_12X), new I("float-to-double", M_12X), new I("double-to-int", M_12X), new I("double-to-long", M_12X), 
-		new I("double-to-float", M_12X), new I("int-to-byte", M_12X), new I("int-to-char", M_12X), new I("int-to-short", M_12X),
+		new I("neg-double", M_12X|ARG0_DEF), new I("int-to-long", M_12X|ARG0_DEF), new I("int-to-float", M_12X|ARG0_DEF), new I("int-to-double", M_12X|ARG0_DEF),
+		new I("long-to-int", M_12X|ARG0_DEF), new I("long-to-float", M_12X|ARG0_DEF), new I("long-to-double", M_12X|ARG0_DEF), new I("float-to-int", M_12X|ARG0_DEF),
+		new I("float-to-long", M_12X|ARG0_DEF), new I("float-to-double", M_12X|ARG0_DEF), new I("double-to-int", M_12X|ARG0_DEF), new I("double-to-long", M_12X|ARG0_DEF), 
+		new I("double-to-float", M_12X|ARG0_DEF), new I("int-to-byte", M_12X|ARG0_DEF), new I("int-to-char", M_12X|ARG0_DEF), new I("int-to-short", M_12X|ARG0_DEF),
 		/* 90 */
-		new I("add-int", M_23X), new I("sub-int", M_23X), new I("mul-int", M_23X), new I("div-int", M_23X),
-		new I("rem-int", M_23X), new I("and-int", M_23X), new I("or-int", M_23X), new I("xor-int", M_23X), 
-		new I("shl-int", M_23X), new I("shr-int", M_23X), new I("ushr-int", M_23X), new I("add-long", M_23X), 
-		new I("sub-long", M_23X), new I("mul-long", M_23X), new I("div-long", M_23X), new I("rem-long", M_23X), 
+		new I("add-int", M_23X|ARG0_DEF), new I("sub-int", M_23X|ARG0_DEF), new I("mul-int", M_23X|ARG0_DEF), new I("div-int", M_23X|ARG0_DEF),
+		new I("rem-int", M_23X|ARG0_DEF), new I("and-int", M_23X|ARG0_DEF), new I("or-int", M_23X|ARG0_DEF), new I("xor-int", M_23X|ARG0_DEF), 
+		new I("shl-int", M_23X|ARG0_DEF), new I("shr-int", M_23X|ARG0_DEF), new I("ushr-int", M_23X|ARG0_DEF), new I("add-long", M_23X|ARG0_DEF), 
+		new I("sub-long", M_23X|ARG0_DEF), new I("mul-long", M_23X|ARG0_DEF), new I("div-long", M_23X|ARG0_DEF), new I("rem-long", M_23X|ARG0_DEF), 
 		/* A0 */
-		new I("and-long", M_23X), new I("or-long", M_23X), new I("xor-long", M_23X), new I("shl-long", M_23X), 
-		new I("shr-long", M_23X), new I("ushr-long", M_23X), new I("add-float", M_23X), new I("sub-float", M_23X), 
-		new I("mul-float", M_23X), new I("div-float", M_23X), new I("rem-float", M_23X), new I("add-double", M_23X), 
-		new I("sub-double", M_23X), new I("mul-double", M_23X), new I("div-double", M_23X), new I("rem-double", M_23X), 
+		new I("and-long", M_23X|ARG0_DEF), new I("or-long", M_23X|ARG0_DEF), new I("xor-long", M_23X|ARG0_DEF), new I("shl-long", M_23X|ARG0_DEF), 
+		new I("shr-long", M_23X|ARG0_DEF), new I("ushr-long", M_23X|ARG0_DEF), new I("add-float", M_23X|ARG0_DEF), new I("sub-float", M_23X|ARG0_DEF), 
+		new I("mul-float", M_23X|ARG0_DEF), new I("div-float", M_23X|ARG0_DEF), new I("rem-float", M_23X|ARG0_DEF), new I("add-double", M_23X|ARG0_DEF), 
+		new I("sub-double", M_23X|ARG0_DEF), new I("mul-double", M_23X|ARG0_DEF), new I("div-double", M_23X|ARG0_DEF), new I("rem-double", M_23X|ARG0_DEF), 
 		/* B0 */
-		new I("add-int/2addr", M_12X), new I("sub-int/2addr", M_12X), new I("mul-int/2addr", M_12X), new I("div-int/2addr", M_12X),
-		new I("rem-int/2addr", M_12X), new I("and-int/2addr", M_12X), new I("or-int/2addr", M_12X), new I("xor-int/2addr", M_12X), 
-		new I("shl-int/2addr", M_12X), new I("shr-int/2addr", M_12X), new I("ushr-int/2addr", M_12X), new I("add-long/2addr", M_12X), 
-		new I("sub-long/2addr", M_12X), new I("mul-long/2addr", M_12X), new I("div-long/2addr", M_12X), new I("rem-long/2addr", M_12X), 
+		new I("add-int/2addr", M_12X|ARG0_USEDEF), new I("sub-int/2addr", M_12X|ARG0_USEDEF), new I("mul-int/2addr", M_12X|ARG0_USEDEF), new I("div-int/2addr", M_12X|ARG0_USEDEF),
+		new I("rem-int/2addr", M_12X|ARG0_USEDEF), new I("and-int/2addr", M_12X|ARG0_USEDEF), new I("or-int/2addr", M_12X|ARG0_USEDEF), new I("xor-int/2addr", M_12X|ARG0_USEDEF), 
+		new I("shl-int/2addr", M_12X|ARG0_USEDEF), new I("shr-int/2addr", M_12X|ARG0_USEDEF), new I("ushr-int/2addr", M_12X|ARG0_USEDEF), new I("add-long/2addr", M_12X|ARG0_USEDEF), 
+		new I("sub-long/2addr", M_12X|ARG0_USEDEF), new I("mul-long/2addr", M_12X|ARG0_USEDEF), new I("div-long/2addr", M_12X|ARG0_USEDEF), new I("rem-long/2addr", M_12X|ARG0_USEDEF), 
 		/* C0 */
-		new I("and-long/2addr", M_12X), new I("or-long/2addr", M_12X), new I("xor-long/2addr", M_12X), new I("shl-long/2addr", M_12X), 
-		new I("shr-long/2addr", M_12X), new I("ushr-long/2addr", M_12X), new I("add-float/2addr", M_12X), new I("sub-float/2addr", M_12X), 
-		new I("mul-float/2addr", M_12X), new I("div-float/2addr", M_12X), new I("rem-float/2addr", M_12X), new I("add-double/2addr", M_12X), 
-		new I("sub-double/2addr", M_12X), new I("mul-double/2addr", M_12X), new I("div-double/2addr", M_12X), new I("rem-double/2addr", M_12X),
+		new I("and-long/2addr", M_12X|ARG0_USEDEF), new I("or-long/2addr", M_12X|ARG0_USEDEF), new I("xor-long/2addr", M_12X|ARG0_USEDEF), new I("shl-long/2addr", M_12X|ARG0_USEDEF), 
+		new I("shr-long/2addr", M_12X|ARG0_USEDEF), new I("ushr-long/2addr", M_12X|ARG0_USEDEF), new I("add-float/2addr", M_12X|ARG0_USEDEF), new I("sub-float/2addr", M_12X|ARG0_USEDEF), 
+		new I("mul-float/2addr", M_12X|ARG0_USEDEF), new I("div-float/2addr", M_12X|ARG0_USEDEF), new I("rem-float/2addr", M_12X|ARG0_USEDEF), new I("add-double/2addr", M_12X|ARG0_USEDEF), 
+		new I("sub-double/2addr", M_12X|ARG0_USEDEF), new I("mul-double/2addr", M_12X|ARG0_USEDEF), new I("div-double/2addr", M_12X|ARG0_USEDEF), new I("rem-double/2addr", M_12X|ARG0_USEDEF),
 		/* D0 */
-		new I("add-int/lit16", M_22S), new I("rsub-int", M_22S), new I("mul-int/lit16", M_22S), new I("div-int/lit16", M_22S), 
-		new I("rem-int/lit16", M_22S), new I("and-int/lit16", M_22S), new I("or-int/lit16", M_22S), new I("xor-int/lit16", M_22S), 
-		new I("add-int/lit8", M_22B), new I("rsub-int/lit8", M_22B), new I("mul-int/lit8", M_22B), new I("div-int/lit8", M_22B), 
-		new I("rem-int/lit8", M_22B), new I("and-int/lit8", M_22B), new I("or-int/lit8", M_22B), new I("xor-int/lit8", M_22B),
+		new I("add-int/lit16", M_22S|ARG0_DEF), new I("rsub-int", M_22S|ARG0_DEF), new I("mul-int/lit16", M_22S|ARG0_DEF), new I("div-int/lit16", M_22S|ARG0_DEF), 
+		new I("rem-int/lit16", M_22S|ARG0_DEF), new I("and-int/lit16", M_22S|ARG0_DEF), new I("or-int/lit16", M_22S|ARG0_DEF), new I("xor-int/lit16", M_22S|ARG0_DEF), 
+		new I("add-int/lit8", M_22B|ARG0_DEF), new I("rsub-int/lit8", M_22B|ARG0_DEF), new I("mul-int/lit8", M_22B|ARG0_DEF), new I("div-int/lit8", M_22B|ARG0_DEF), 
+		new I("rem-int/lit8", M_22B|ARG0_DEF), new I("and-int/lit8", M_22B|ARG0_DEF), new I("or-int/lit8", M_22B|ARG0_DEF), new I("xor-int/lit8", M_22B|ARG0_DEF),
 		/* E0 */
-		new I("shl-int/lit8", M_22B), new I("shr-int/lit8", M_22B), new I("ushr-int/lit8", M_22B), new I("undef-e3", M_10X), 
+		new I("shl-int/lit8", M_22B|ARG0_DEF), new I("shr-int/lit8", M_22B|ARG0_DEF), new I("ushr-int/lit8", M_22B), new I("undef-e3", M_10X), 
 		new I("undef-e4", M_10X), new I("undef-e5", M_10X), new I("undef-e6", M_10X), new I("undef-e7", M_10X), 
 		new I("undef-e8", M_10X), new I("undef-e9", M_10X), new I("undef-ea", M_10X), new I("undef-eb", M_10X), 
 		new I("undef-ec", M_10X), new I("undef-ed", M_10X), new I("undef-ee", M_10X), new I("undef-ef", M_10X), 
@@ -247,6 +259,40 @@ public class DexInstruction {
 		return (((int)word1) & 0xFFFF) | (((int)word2) << 16);
 	}
 	
+	public static class Use implements Comparable<Use> {
+		private DexInstruction inst;
+		private int operand;
+		
+		public Use(DexInstruction inst, int operand) {
+			this.inst = inst;
+			this.operand = operand;
+		}
+		
+		public DexInstruction getUser() {
+			return inst;
+		}
+		
+		public int getOperand() {
+			return operand;
+		}
+		
+		public boolean equals( Object o ) {
+			if( o instanceof Use ) {
+				Use uo = (Use)o;
+				return uo.inst == inst && uo.operand == operand;
+			}
+			return false;
+		}
+		public int hashCode() {
+			return inst.hashCode() ^ operand;
+		}
+
+		@Override
+		public int compareTo(Use o) {
+			return inst.getPC() - o.inst.getPC();
+		}
+	}
+	
 	private DexMethodBody method;
 	private DexBasicBlock parent;
 	private I instruction;
@@ -256,6 +302,8 @@ public class DexInstruction {
 	private int registers[];
 	private long constOperand;
 	private DexType[]registerTypes;
+	private Set<DexInstruction>[] registerDefs;
+	private Set<Use> uses;
 	
 	
 	/**
@@ -263,6 +311,7 @@ public class DexInstruction {
 	 * @param data
 	 * @param posn
 	 */
+	@SuppressWarnings("unchecked")
 	public DexInstruction( DexMethodBody body, int posn ) {
 		this.method = body;
 		this.pc = posn;
@@ -285,7 +334,7 @@ public class DexInstruction {
 			extra = code[target+1]*2 + 4;
 		} else if( opcode == SPARSE_SWITCH ) {
 			target = posn + signed32(code[posn+1], code[posn+2]);
-			extra = code[target+1]*4 + 4;
+			extra = code[target+1]*4 + 2;
 		} else if( opcode == FILL_ARRAY_DATA ) {
 			target = posn + signed32(code[posn+1], code[posn+2]);
 			int width = code[target+1];
@@ -305,6 +354,11 @@ public class DexInstruction {
 		
 		parseOperands();
 		this.registerTypes = new DexType[registers.length];
+		this.registerDefs = (Set<DexInstruction>[])new Set[registers.length];
+		for( int i=0; i<registers.length; i++ ) {
+			registerDefs[i] = new HashSet<DexInstruction>();
+		}
+		this.uses = new TreeSet<Use>();
 	}
 	
 	/**
@@ -314,6 +368,7 @@ public class DexInstruction {
 	 * @param registers
 	 * @param operand
 	 */
+	@SuppressWarnings("unchecked")
 	public DexInstruction( DexMethodBody body, int posn, int opcode, int registers[], long operand ) {
 		this.method = body;
 		this.pc = posn;
@@ -323,6 +378,11 @@ public class DexInstruction {
 		this.registers = registers;
 		this.constOperand = operand;
 		this.registerTypes = new DexType[registers.length];
+		this.registerDefs = (Set<DexInstruction>[])new Set[registers.length];
+		for( int i=0; i<registers.length; i++ ) {
+			registerDefs[i] = new HashSet<DexInstruction>();
+		}
+		this.uses = new TreeSet<Use>();
 	}
 	
 	protected void setParent( DexBasicBlock parent ) {
@@ -372,8 +432,55 @@ public class DexInstruction {
 		registerTypes[idx] = value;
 	}
 	
-	public void checkRegisterType( int idx, DexType type ) throws ParseException {
-		registerTypes[idx].checkType(type);
+	public void setRegisterDefs( int idx, Set<DexInstruction> defs ) {
+		registerDefs[idx].clear();
+		registerDefs[idx].addAll(defs);
+	}
+	
+	public Set<DexInstruction> getRegisterDefs( int idx ) {
+		return registerDefs[idx];
+	}
+	
+	public void addUse( DexInstruction inst, int idx ) {
+		uses.add( new Use(inst, idx) );
+	}
+	
+	/**
+	 * Invoke register list will contain 2 entries for long+double values -
+	 * go through and eliminate these based on the declared type of the method.
+	 * Note: we can't do this at parseOperand time as we can't resolve the
+	 * method at that point.
+	 */
+	public void fixInvokeRegisters( ) {
+		if( isInvoke() ) {
+			DexMethod method = getMethodOperand();
+			int expect = method.getNumParamTypes();
+			if( opcode != INVOKE_STATIC && opcode != INVOKE_STATIC_RANGE ) {
+				expect++;
+			}
+			if( expect != registers.length ) {
+				int registers[] = new int[expect];
+				DexType registerTypes[] = new DexType[expect];
+				int i, j;
+				
+				for( i=0, j=0; i<expect; i++, j++ ) {
+					registers[i] = this.registers[j];
+					registerTypes[i] = this.registerTypes[j];
+					String type;
+					if( opcode == INVOKE_STATIC || opcode == INVOKE_STATIC_RANGE ) {
+						type = method.getParamType(i);
+					} else {
+						type = method.getCallingParamType(i);
+					}
+					if( type.equals("J") || type.equals("D") )
+						j++;
+				}
+				if( j != this.registers.length )
+					throw new RuntimeException("Invalid number of parameters to invoke: " + this.disassemble() );
+				this.registers = registers;
+				this.registerTypes = registerTypes;
+			}
+		}
 	}
 	
 	/**
@@ -408,6 +515,34 @@ public class DexInstruction {
 		int opcode = getOpcode();
 		return opcode >= INVOKE_VIRTUAL && opcode <= INVOKE_INTERFACE_RANGE &&
 		    opcode != 0x73; /* Undef in the middle */
+	}
+	
+	public boolean isConstant() {
+		int opcode = getOpcode();
+		return opcode >= CONST4 && opcode <= CONST_CLASS;
+	}
+	
+	public boolean isMove() {
+		int opcode = getOpcode();
+		return opcode >= MOVE && opcode <= MOVE_OBJECT16;
+	}
+	
+	public boolean readsOperand( int reg ) {
+		if( reg > 0 )
+			return true;
+		return instruction.getArg0Use() != ARG0_DEF;
+	}
+	
+	public boolean writesOperand( int reg ) {
+		return reg == 0 && instruction.getArg0Use() != ARG0_USE;
+	}
+	
+	public Set<DexInstruction> getOperandDefs( int reg ) {
+		return registerDefs[reg];
+	}
+	
+	public Set<Use> uses() {
+		return uses;
 	}
 	
 	/**
@@ -499,7 +634,7 @@ public class DexInstruction {
 			int size = getUShort(start+1);
 			int []result = new int[size];
 			for( int i=0; i<size; i++ ) {
-				result[i] = pc + getInt(start + 4 + i*2 + size*2);
+				result[i] = pc + getInt(start + 2 + i*2 + size*2);
 			}
 			return result;
 		} else {
@@ -556,7 +691,7 @@ public class DexInstruction {
 			int size = getUShort(start+1);
 			int []result = new int[size];
 			for( int i=0; i<size; i++ ) {
-				result[i] = pc + getInt(start + 4 + i*2);
+				result[i] = pc + getInt(start + 2 + i*2);
 			}
 			return result;
 		}
@@ -576,7 +711,7 @@ public class DexInstruction {
 			fmt.format("v%d", registers[i]);
 			DexType type = registerTypes[i];
 			if( type != null ) {
-				fmt.format(" [%s]", type.format());
+				fmt.format(" [%s | %s]", type.format(), formatDefs(i));
 			}
 		}
 		int optype = instruction.getOperandType();
@@ -609,7 +744,7 @@ public class DexInstruction {
 	}
 	
 	public String disassemble() {
-		return instruction.getMnemonic() + " " + formatOperands(); 
+		return instruction.getMnemonic() + " " + formatOperands() + " " + formatUses(); 
 	}
 
 	public String formatTable(String indent) {
@@ -636,7 +771,7 @@ public class DexInstruction {
 					if( indent != null ) {
 						fmt.format("%s", indent);
 					}
-					int targetpc = pc + getInt(start + 4 + i*2 + size*2);
+					int targetpc = pc + getInt(start + 2 + i*2 + size*2);
 					fmt.format("%d: %s (%04X)\n", getInt(start + 4 + i*2), method.getBlockForPC(targetpc), targetpc); 
 				}
 				break;
@@ -649,6 +784,32 @@ public class DexInstruction {
 			}
 		}
 		return builder.toString();
+	}
+	
+	public String formatUses() {
+		StringBuilder result = new StringBuilder("; Uses: ");
+		int count = 0;
+		for( Iterator<Use> it = uses.iterator(); it.hasNext(); ) {
+			Use use = it.next();
+			if( count != 0 ) 
+				result.append( ", " );
+			result.append( use.getUser().getHexPC() + ":" + use.getOperand() );
+			count++;
+		}
+		return result.toString();
+	}
+
+	public String formatDefs(int operand) {
+		StringBuilder result = new StringBuilder();
+		int count = 0;
+		for( Iterator<DexInstruction> it = registerDefs[operand].iterator(); it.hasNext(); ) {
+			DexInstruction inst = it.next();
+			if( count != 0 ) 
+				result.append( ", " );
+			result.append( inst.getHexPC() );
+			count++;
+		}
+		return result.toString();
 	}
 
 	public long getLong( int posn ) {
@@ -683,7 +844,6 @@ public class DexInstruction {
 	private int getSHighByte( int posn ) {
 		return ((int)code[posn]) >> 8;
 	}
-
 
 	private void parseOperands( ) {
 		int b;

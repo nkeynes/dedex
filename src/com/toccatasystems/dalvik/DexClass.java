@@ -135,7 +135,7 @@ public class DexClass extends DexItem {
 	}
 	
 	public String getInnerClassName( ) {
-		return getAnnotationString(DexAnnotation.DALVIK_INNERCLASS, "value" );
+		return getAnnotationString(DexAnnotation.DALVIK_INNERCLASS, "name" );
 	}
 	
 	public int getInnerClassFlags( ) {

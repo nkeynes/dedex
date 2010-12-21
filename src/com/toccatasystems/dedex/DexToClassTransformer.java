@@ -4,14 +4,21 @@ import java.util.Iterator;
 import java.util.Map;
 
 import org.objectweb.asm.AnnotationVisitor;
+import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.analysis.Analyzer;
+import org.objectweb.asm.tree.analysis.BasicVerifier;
+
 
 import com.toccatasystems.dalvik.DexAnnotation;
 import com.toccatasystems.dalvik.DexClass;
 import com.toccatasystems.dalvik.DexField;
 import com.toccatasystems.dalvik.DexFile;
+import com.toccatasystems.dalvik.DexItem;
 import com.toccatasystems.dalvik.DexMethod;
 import com.toccatasystems.dalvik.DexMethodBody;
 import com.toccatasystems.dalvik.DexValue;
@@ -35,10 +42,12 @@ public class DexToClassTransformer implements DexVisitor {
 	MethodVisitor mv;
 	BytecodeTransformer bct;
 	int state;
+	boolean verifyBytecode = false;
 	
-	public DexToClassTransformer( ClassOutputWriter output ) {
+	public DexToClassTransformer( ClassOutputWriter output, boolean verifyBytecode ) {
 		this.output = output;
 		this.bct = new BytecodeTransformer();
+		this.verifyBytecode = verifyBytecode;
 		state = IN_FILE;
 	}
 	
@@ -58,10 +67,30 @@ public class DexToClassTransformer implements DexVisitor {
 		DexMethod enclosingMethod = clz.getEnclosingMethod();
 		String enclosingClass = clz.getInternalEnclosingClass();
 		if( enclosingMethod != null ) {
-			writer.visitOuterClass(enclosingMethod.getInternalClassType(), 
+			enclosingClass = enclosingMethod.getInternalClassType();
+			writer.visitOuterClass(enclosingClass, 
 					enclosingMethod.getName(), enclosingMethod.getDescriptor());
+			writer.visitInnerClass(clz.getInternalName(), enclosingClass, 
+					clz.getInnerClassName(), clz.getInnerClassFlags());
 		} else if( enclosingClass != null ) {
-			writer.visitOuterClass(enclosingClass, null, null);
+			enclosingClass = DexItem.formatInternalName(enclosingClass);
+			writer.visitInnerClass(clz.getInternalName(), enclosingClass, 
+					clz.getInnerClassName(), clz.getInnerClassFlags());
+		}
+		
+		String []innerClasses = clz.getMemberClasses();
+		if( innerClasses != null ) {
+			for( int i=0; i<innerClasses.length; i++ ) {
+				String internalInner = DexItem.formatInternalName(innerClasses[i]);
+				DexClass inner = file.getClass(internalInner);
+				String innerName = null;
+				int innerAccess = 0;
+				if( inner != null ) {
+					innerName = inner.getInnerClassName();
+					innerAccess = inner.getInnerClassFlags();
+				}
+				writer.visitInnerClass(DexItem.formatInternalName(innerClasses[i]), clz.getInternalName(), innerName, innerAccess);
+			}
 		}
 		state = IN_CLASS;
 		
@@ -163,12 +192,33 @@ public class DexToClassTransformer implements DexVisitor {
 	public void leaveClass(DexClass clz) {
 		writer.visitEnd();
 		byte []classData = writer.toByteArray();
+		if( verifyBytecode ) {
+			verify(clz, classData);
+		}
 		state = IN_FILE;
 		output.write(clz.getInternalName(), classData);
 	}
 
 	public void leaveFile(DexFile file) {
 		output.end(file.getName());
+	}
+
+	private void verify( DexClass clz, byte[]data ) {
+		ClassReader cr = new ClassReader(data);
+        ClassNode cn = new ClassNode();
+        cr.accept(cn, ClassReader.SKIP_DEBUG);
+
+        for (int i = 0; i < cn.methods.size(); ++i) {
+            MethodNode method = (MethodNode) cn.methods.get(i);
+            BasicVerifier verifier = new BasicVerifier();
+            try {
+            	Analyzer a = new Analyzer(verifier);
+            	a.analyze(cn.name, method);
+            } catch( Exception e ) {
+            	clz.getMethod(i).getBody().disassemble(System.err);
+            	throw new RuntimeException("Verification failure in " + clz.getDisplayName() + "." + method.name, e);
+            }
+        }
 	}
 
 }

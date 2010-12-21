@@ -17,10 +17,11 @@ import com.toccatasystems.dalvik.DexInstruction;
  *
  * @param <Param>
  */
-public abstract class AbstractDataflowAnalysis<Param> {
+public abstract class AbstractDataflowAnalysis<Param> extends DexAnalysis {
 
 	Map<DexBasicBlock, Map<DexBasicBlock, Param>> data;
 	boolean forwardFlow;
+	PrintStream debugOut = null;
 	
 	protected AbstractDataflowAnalysis( ) {
 		this.data = new HashMap<DexBasicBlock, Map<DexBasicBlock, Param>>();
@@ -52,10 +53,17 @@ public abstract class AbstractDataflowAnalysis<Param> {
 		computeDataflow(list, startParams);
 	}
 	
+	public void setDebug( PrintStream debugOut ) {
+		this.debugOut = debugOut;
+	}
+	
 	protected abstract Iterator<DexInstruction> getInstIterator( DexBasicBlock block );
 	protected abstract Iterator<DexBasicBlock> getNextIterator( DexBasicBlock block );
 	
 	protected void computeDataflow( Collection<DexBasicBlock> start, Param startParams ) {
+		if( debugOut != null ) {
+			debugOut.println( "Computing dataflow on " + start.iterator().next().getParent().getParent().getDisplaySignature() + " from " + start );
+		}
 		data.clear();
 		for( Iterator<DexBasicBlock> it = start.iterator(); it.hasNext(); ) {
 			Map<DexBasicBlock, Param> initMap = new HashMap<DexBasicBlock,Param>();
@@ -67,7 +75,14 @@ public abstract class AbstractDataflowAnalysis<Param> {
 			DexBasicBlock bb = worklist.remove(0);
 
 			Map<DexBasicBlock, Param> inEdges = data.get(bb);
+			if( debugOut != null ) {
+				debugOut.println("Entering " + bb.getName() + ":");
+				printParamMap(debugOut, inEdges);
+			}
 			Param params = enterBlock(bb, inEdges);
+			if( debugOut != null ) {
+				debugOut.println("  => " + params );
+			}
 			Iterator<DexInstruction> ii = getInstIterator(bb);
 			while( ii.hasNext() ) {
 				params = visit(ii.next(), params);

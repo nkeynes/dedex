@@ -87,7 +87,7 @@ public class BytecodeTransformer {
 					ret(inst.getRegisterType(0));
 					break;
 				case CONST4: case CONST16: case CONST: case CONST_HIGH16: case CONST_WIDE: case CONST_WIDE32:
-				case CONST_WIDE_HIGH16:
+				case CONST_WIDE_HIGH16: case CONST_WIDE16:
 					ldc(inst);
 					pop( inst, 0 );
 					break;
@@ -110,6 +110,7 @@ public class BytecodeTransformer {
 				case CHECK_CAST:
 					push( inst, 0 );
 					out.visitTypeInsn(Opcodes.CHECKCAST, inst.getTypeOperand().getInternalName());
+					pop( inst, 0 );
 					break;
 				case INSTANCE_OF:
 					push( inst, 1 );
@@ -144,11 +145,13 @@ public class BytecodeTransformer {
 					out.visitJumpInsn(Opcodes.GOTO, labelMap.get(inst.getBranchBlock()));
 					break;
 				case PACKED_SWITCH:
+					push(inst, 0);
 					out.visitTableSwitchInsn(inst.getMinSwitchKey(), inst.getMaxSwitchKey(),
 							labelMap.get(bb.getFallthroughSuccessor()), 
 							getLabels(inst.getSwitchBlocks()) );
 					break;
 				case SPARSE_SWITCH:
+					push(inst, 0);
 					out.visitLookupSwitchInsn(labelMap.get(bb.getFallthroughSuccessor()), 
 							inst.getSwitchKeys(), getLabels(inst.getSwitchBlocks()));
 					break;
@@ -224,7 +227,7 @@ public class BytecodeTransformer {
 				case AGET_BYTE: case AGET_CHAR: case AGET_SHORT:
 					push( inst, 1 );
 					push( inst, 2 );
-					loadarray( inst.getRegisterType(1).getElementType() );
+					loadarray( inst.getRegisterType(0) );
 					pop( inst, 0 );
 					break;
 				case APUT: case APUT_WIDE: case APUT_OBJECT: case APUT_BOOLEAN:
@@ -232,7 +235,7 @@ public class BytecodeTransformer {
 					push( inst, 1 );
 					push( inst, 2 );
 					push( inst, 0 );
-					storearray( inst.getRegisterType(1).getElementType() );
+					storearray( inst.getRegisterType(0) );
 					break;
 
 				case IGET: case IGET_WIDE: case IGET_OBJECT: case IGET_BOOLEAN:
@@ -369,6 +372,9 @@ public class BytecodeTransformer {
 				case MUL_INT_LIT16:   arith2s( inst, Opcodes.IMUL ); break;
 				case DIV_INT_LIT16:   arith2s( inst, Opcodes.IDIV ); break;
 				case REM_INT_LIT16:   arith2s( inst, Opcodes.IREM ); break;
+				case AND_INT_LIT16:   arith2s( inst, Opcodes.IAND ); break;
+				case OR_INT_LIT16:    arith2s( inst, Opcodes.IOR ); break;
+				case XOR_INT_LIT16:   arith2s( inst, Opcodes.IXOR ); break;
 				case ADD_INT_LIT8:    arith2b( inst, Opcodes.IADD ); break;
 				case RSUB_INT_LIT8:   arith2b( inst, Opcodes.ISUB ); break;
 				case MUL_INT_LIT8:    arith2b( inst, Opcodes.IMUL ); break;
@@ -381,11 +387,18 @@ public class BytecodeTransformer {
 				case SHR_INT_LIT8:    arith2b( inst, Opcodes.ISHR ); break;
 				case USHR_INT_LIT8:   arith2b( inst, Opcodes.IUSHR ); break;
 
+				default:
+					throw new RuntimeException( "Unhandled opcode: " + inst.disassemble() );
 				}
 			}
 		}
 		
-		out.visitMaxs(maxStackSize, body.getNumRegisters());
+		try { 
+			out.visitMaxs(maxStackSize, body.getNumRegisters());
+		} catch( Exception e ) {
+			e.printStackTrace();
+			System.err.println( "at " + body.getParent().getDisplaySignature() );
+		}
 	}
 
 	/**
@@ -692,11 +705,11 @@ public class BytecodeTransformer {
 	 */
 	private void arith2b( DexInstruction inst, int opcode ) {
 		if( opcode == Opcodes.ISHR || opcode == Opcodes.ISHL || opcode == Opcodes.IUSHR ) {
-			push( inst, 0 );
+			push( inst, 1 );
 			out.visitIntInsn(Opcodes.BIPUSH, inst.getIntOperand());
 		} else {
 			out.visitIntInsn(Opcodes.BIPUSH, inst.getIntOperand());
-			push( inst, 0 );
+			push( inst, 1 );
 		}
 		out.visitInsn(opcode);
 		pop( inst, 0 );
@@ -709,7 +722,7 @@ public class BytecodeTransformer {
 	 */
 	private void arith2s( DexInstruction inst, int opcode ) {
 		out.visitIntInsn(Opcodes.SIPUSH, inst.getIntOperand());
-		push( inst, 0 );
+		push( inst, 1 );
 		out.visitInsn(opcode);
 		pop( inst, 0 );
 	}

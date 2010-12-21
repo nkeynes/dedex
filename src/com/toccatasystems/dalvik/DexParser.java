@@ -11,6 +11,8 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.util.ArrayList;
 
+import com.toccatasystems.dalvik.analysis.ComputeUseDefInfo;
+
 /**
  * DexParser parses a .dex file and returns a new DexFile. The parser can be
  * reused, but is not thread-safe.
@@ -54,7 +56,9 @@ public class DexParser {
 		data = channel.map(MapMode.READ_ONLY, 0, channel.size());
 		DexClass []result = readFile();
 		channel.close();
-		return new DexFile(filename, stringTable, typeNameTable, fieldTable, methodTable, result);
+		DexFile file = new DexFile(filename, stringTable, typeNameTable, fieldTable, methodTable, result);
+		postParse(file);
+		return file;
 	}
 	
 	/**************************** File parsing ******************************/	
@@ -122,20 +126,30 @@ public class DexParser {
 			int dataOffset = data.getInt(classOffset+24);
 			int staticOffset = data.getInt(classOffset+28);
 			
-			/* class_data_item */
-			data.position(dataOffset);
-			int staticFieldsSize = readULEB128();
-			int instanceFieldsSize = readULEB128();
-			int directMethodsSize = readULEB128();
-			int virtualMethodsSize = readULEB128();
+			DexField []staticFields, instanceFields;
+			DexMethod []directMethods, virtualMethods;
 			
-			DexField []staticFields = readEncodedFields(staticFieldsSize);
-			DexField []instanceFields = readEncodedFields(instanceFieldsSize);
-			DexMethod []directMethods = readEncodedMethods(directMethodsSize);
-			DexMethod []virtualMethods = readEncodedMethods(virtualMethodsSize);
-			
+			if( dataOffset == 0 ) {
+				staticFields = new DexField[0];
+				instanceFields = new DexField[0];
+				directMethods = new DexMethod[0];
+				virtualMethods = new DexMethod[0];
+			} else {
+				/* class_data_item */
+				data.position(dataOffset);
+				int staticFieldsSize = readULEB128();
+				int instanceFieldsSize = readULEB128();
+				int directMethodsSize = readULEB128();
+				int virtualMethodsSize = readULEB128();
+
+				staticFields = readEncodedFields(staticFieldsSize);
+				instanceFields = readEncodedFields(instanceFieldsSize);
+				directMethods = readEncodedMethods(directMethodsSize);
+				virtualMethods = readEncodedMethods(virtualMethodsSize);
+			} 
 			DexClass clz = new DexClass(className, flags, superclass,
 					interfaces, sourceFile, staticFields, instanceFields, directMethods, virtualMethods);
+			
 			result[i] = clz;
 			
 			if( annotationOffset != 0 ) {
@@ -429,6 +443,7 @@ public class DexParser {
 			case DexValue.SHORT: obj = new Short(buf.getShort()); break;
 			case DexValue.CHAR: obj = new Character(buf.getChar()); break;
 			case DexValue.INT: obj = new Integer(buf.getInt()); break;
+			case DexValue.LONG: obj = new Long(buf.getLong()); break;
 			case DexValue.FLOAT: obj = new Float(buf.getFloat()); break;
 			case DexValue.DOUBLE: obj = new Double(buf.getDouble()); break;
 			case DexValue.STRING: obj = lookupStringId(buf.getInt()); break;
@@ -437,7 +452,7 @@ public class DexParser {
 			case DexValue.METHOD: obj = lookupMethodId(buf.getInt()); break;
 			case DexValue.ENUM: obj = lookupFieldId(buf.getInt()); break;
 			default:
-				throw new ParseException( "Invalid value type" );
+				throw new ParseException( "Invalid value type: " + type );
 			}
 		}
 		
@@ -695,4 +710,10 @@ public class DexParser {
 		return methodTable[id];				
 	}
 
+	/************************** Post-parse analysis *************************/
+	
+	private void postParse( DexFile file ) {
+		ComputeUseDefInfo info = new ComputeUseDefInfo();
+		info.analyse(file);
+	}
 }
