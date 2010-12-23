@@ -53,6 +53,7 @@ public class DexType implements Comparable<DexType> {
 	public final static DexType NO_SUCH_FIELD_EXCEPTION = new DexType("Ljava/lang/NoSuchFieldException;");
 	public final static DexType NO_SUCH_METHOD_EXCEPTION = new DexType("Ljava/lang/NoSuchMethodException;");
 	public final static DexType NEGATIVE_ARRAY_SIZE_EXCEPTION = new DexType("Ljava/lang/NegativeArraySizeException;");
+	public final static DexType CLONE_NOT_SUPPORTED_EXCEPTION = new DexType("Ljava/lang/CloneNotSupportedException;");
 	
 	public final static DexType SERIALIZABLE = new DexType("Ljava/io/Serializable;");
 
@@ -79,9 +80,12 @@ public class DexType implements Comparable<DexType> {
 	public final static DexType VERIFY_ERROR = new DexType("Ljava/lang/VerifyError;");
 	public final static DexType VIRTUAL_MACHINE_ERROR = new DexType("Ljava/lang/VirtualMachineError;");
 	public final static DexType GENERIC_SIGNATURE_FORMAT_ERROR = new DexType("Ljava/lang/reflect/GenericSignatureFormatError;");
+	public final static DexType INVOCATION_TARGET_EXCEPTION = new DexType("Ljava/lang/reflect/InvocationTargetException;");
 	public final static DexType ZIP_ERROR = new DexType("Ljava/util/zip/ZipError;");
 	
-
+	public final static DexType IO_EXCEPTION = new DexType("Ljava/io/IOException;");
+	public final static DexType MALFORMED_URL_EXCEPTION = new DexType("Ljava/net/MalformedURLException;");
+	public final static DexType UNSUPPORTED_ENCODING_EXCEPTION = new DexType("Ljava/io/UnsupportedEncodingException;");
 	
 	/**
 	 * Map from Class Type to its (transitively complete) set of supertypes.
@@ -112,6 +116,7 @@ public class DexType implements Comparable<DexType> {
 				}
 			}
 		}
+		map.put(type, types);
 	}
 	
 	private final static void add( Map<DexType, Set<DexType>> map, DexType type, DexType parentType ) {
@@ -139,6 +144,7 @@ public class DexType implements Comparable<DexType> {
 		add( map, ILLEGAL_ACCESS_EXCEPTION, EXCEPTION );
 		add( map, NO_SUCH_FIELD_EXCEPTION, EXCEPTION );
 		add( map, NO_SUCH_METHOD_EXCEPTION, EXCEPTION );
+		add( map, CLONE_NOT_SUPPORTED_EXCEPTION, EXCEPTION );
 		add( map, RUNTIME_EXCEPTION, EXCEPTION );
 		add( map, ARITHMETIC_EXCEPTION, RUNTIME_EXCEPTION );
 		add( map, ARRAY_STORE_EXCEPTION, RUNTIME_EXCEPTION );
@@ -178,6 +184,10 @@ public class DexType implements Comparable<DexType> {
 		add( map, UNSATISFIED_LINK_ERROR, LINKAGE_ERROR );
 		add( map, VERIFY_ERROR, LINKAGE_ERROR );
 		add( map, ASSERTION_ERROR, ERROR );
+		add( map, INVOCATION_TARGET_EXCEPTION, EXCEPTION );
+		add( map, IO_EXCEPTION, EXCEPTION );
+		add( map, UNSUPPORTED_ENCODING_EXCEPTION, IO_EXCEPTION );
+		add( map, MALFORMED_URL_EXCEPTION, IO_EXCEPTION );
 		
 		SYSTEM_SUPERTYPE_TABLE = map;
 	}		

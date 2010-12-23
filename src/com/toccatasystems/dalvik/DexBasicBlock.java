@@ -13,6 +13,7 @@ public class DexBasicBlock {
 	private DexMethodBody parent;
 	private String name;
 	private DexBasicBlock fallthrough;
+	private DexBasicBlock fallthroughPredecessor;
 	private List<DexInstruction> instructions;
 	private List<DexBasicBlock> predecessors;
 	private List<DexBasicBlock> successors;
@@ -47,12 +48,12 @@ public class DexBasicBlock {
 		return this.parent;
 	}
 	
-	protected void add( DexInstruction ins ) {
+	public void add( DexInstruction ins ) {
 		instructions.add(ins);
 		ins.setParent(this);
 	}
 	
-	protected void insertBefore( DexInstruction ins, DexInstruction before ) {
+	public void insertBefore( DexInstruction ins, DexInstruction before ) {
 		for( int i=0; i<instructions.size(); i++ ) {
 			if( instructions.get(i) == before ) {
 				instructions.add(i, ins);
@@ -62,7 +63,7 @@ public class DexBasicBlock {
 		instructions.add(ins);
 	}
 	
-	protected void insertAfter( DexInstruction ins, DexInstruction after ) {
+	public void insertAfter( DexInstruction ins, DexInstruction after ) {
 		for( int i=0; i<instructions.size(); i++ ) {
 			if( instructions.get(i) == after ) {
 				instructions.add(i+1, ins);
@@ -71,14 +72,15 @@ public class DexBasicBlock {
 		instructions.add(ins);
 	}
 
-	protected void addSuccessor( DexBasicBlock next ) {
+	public void addSuccessor( DexBasicBlock next ) {
 		successors.add(next);
 		next.predecessors.add(this);
 	}
 	
-	protected void addFallthroughSuccessor( DexBasicBlock next ) {
+	public void addFallthroughSuccessor( DexBasicBlock next ) {
 		addSuccessor(next);
 		this.fallthrough = next;
+		next.fallthroughPredecessor = this;
 	}
 	
 	protected void addExceptionSuccessor( DexBasicBlock handler ) {
@@ -90,6 +92,10 @@ public class DexBasicBlock {
 
 	public DexInstruction first() {
 		return instructions.get(0);
+	}
+	
+	public DexInstruction last() {
+		return instructions.get(instructions.size()-1);
 	}
 	
 	public DexInstruction getNext( DexInstruction after ) {
@@ -213,6 +219,10 @@ public class DexBasicBlock {
 	public DexBasicBlock getFallthroughSuccessor() {
 		return fallthrough;
 	}
+	
+	public DexBasicBlock getFallthroughPredecessor() {
+		return fallthroughPredecessor;
+	}
 
 	public boolean hasExceptionSuccessors() {
 		return exceptionSuccessors.size() != 0;
@@ -228,6 +238,14 @@ public class DexBasicBlock {
 	
 	public Iterator<DexBasicBlock> exceptionIterator() {
 		return exceptionSuccessors.iterator();
+	}
+	
+	public void moveToEnd() {
+		if( fallthroughPredecessor != null ) {
+			int lastPC = fallthroughPredecessor.last().getPC();
+			fallthroughPredecessor.add( new DexInstruction(parent, lastPC, DexOpcodes.GOTO16, new int[0], getPC()) );
+		}
+		parent.moveToEnd(this);
 	}
 	
 	/**

@@ -6,7 +6,6 @@ import java.util.Iterator;
 import org.apache.commons.cli.*;
 
 import com.toccatasystems.dalvik.*;
-import com.toccatasystems.dalvik.analysis.TypeAssignment;
 
 /**
  * 
@@ -115,13 +114,8 @@ public class Main {
 				}
 			}
 			
-			TypeAssignment type = new TypeAssignment();
-			try {
-				type.analyse(dex);
-			} catch( Exception e ) {
-				System.err.println( "Type verification failed!" );
-				e.printStackTrace();
-			}
+			RestructureExceptions rest = new RestructureExceptions();
+			rest.transform(dex);
 			
 			if( cl.hasOption('D') ) {
 				DexDump dump = new DexDump(System.out, cl.hasOption('v'));

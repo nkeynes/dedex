@@ -485,7 +485,7 @@ public class DexInstruction {
 	 * @return the number of words used by the instruction
 	 */
 	public int size() {
-		return instruction.getNumWords();
+		return code.length < instruction.getNumWords() ? code.length : instruction.getNumWords();
 	}
 	
 	public int getOpcode() {
@@ -632,6 +632,11 @@ public class DexInstruction {
 		return opcode >= MOVE && opcode <= MOVE_OBJECT16;
 	}
 	
+	public boolean isMoveResult() {
+		int opcode = getOpcode();
+		return opcode >= MOVE_RESULT && opcode <= MOVE_RESULT_OBJECT;
+	}
+	
 	public boolean readsOperand( int reg ) {
 		if( reg > 0 )
 			return true;
@@ -664,19 +669,7 @@ public class DexInstruction {
 	}
 	
 	public int getBranchTarget() {
-		switch( instruction.mode ) {
-		case M_10T: 
-			return pc + getSHighByte(0);
-		case M_20T: 
-		case M_21T: 
-		case M_22T:
-			return pc + getShort(1);
-		case M_30T:
-		case M_31T:
-			return pc + getInt(1);
-		default:
-			throw new IllegalArgumentException("Instruction does not have a branch target");
-		}
+		return (int)constOperand;
 	}
 	
 	public String getBranchLabel() {

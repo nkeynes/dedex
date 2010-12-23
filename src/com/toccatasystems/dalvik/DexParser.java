@@ -13,6 +13,7 @@ import java.nio.channels.FileChannel.MapMode;
 import java.util.ArrayList;
 
 import com.toccatasystems.dalvik.analysis.ComputeUseDefInfo;
+import com.toccatasystems.dalvik.analysis.TypeAssignment;
 
 /**
  * DexParser parses a .dex file and returns a new DexFile. The parser can be
@@ -716,5 +717,7 @@ public class DexParser {
 		}
 		ComputeUseDefInfo info = new ComputeUseDefInfo();
 		info.analyse(file);
+		TypeAssignment type = new TypeAssignment();
+		type.analyse(file);
 	}
 }

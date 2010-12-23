@@ -23,7 +23,7 @@ public class DexMethodBody {
 		Iterator<DexInstruction> ii;
 		
 		protected InstIterator() {
-			bbit = blocks.values().iterator();
+			bbit = blockMap.values().iterator();
 			ii = bbit.next().iterator();
 		}
 
@@ -51,7 +51,8 @@ public class DexMethodBody {
 	private short []code;
 	private DexDebug debug;
 	private List<DexTryCatch> handlers;
-	private Map<Integer, DexBasicBlock> blocks;
+	private Map<Integer, DexBasicBlock> blockMap;
+	private List<DexBasicBlock> blocks;
 	private List<DexBasicBlock> exitBlocks;
 	private DexArgument[] arguments;
 	
@@ -103,7 +104,7 @@ public class DexMethodBody {
 	}
 		
 	public DexBasicBlock getEntryBlock() {
-		return blocks.get(0);
+		return blockMap.get(0);
 	}
 	
 	public List<DexBasicBlock> getExitBlocks() {
@@ -120,11 +121,11 @@ public class DexMethodBody {
 	}
 	
 	public DexBasicBlock getBlockForPC( int pc ) {
-		return blocks.get(pc);
+		return blockMap.get(pc);
 	}
 
 	public Iterator<DexBasicBlock> iterator() {
-		return blocks.values().iterator();
+		return blocks.iterator();
 	}
 	
 	public Iterator<DexInstruction> instIterator() {
@@ -133,10 +134,10 @@ public class DexMethodBody {
 	
 	public Iterator<DexBasicBlock> iterator( int pc ) {
 		if( pc == 0 ) {
-			return blocks.values().iterator();
+			return blockMap.values().iterator();
 		} else {
 			int count = 0;
-			Iterator<DexBasicBlock> it = blocks.values().iterator();
+			Iterator<DexBasicBlock> it = blockMap.values().iterator();
 			while( it.hasNext() ) {
 				DexBasicBlock bb = it.next();
 				if( bb.getEndPC() == pc ) {
@@ -144,7 +145,7 @@ public class DexMethodBody {
 				}
 				if( bb.getPC() <= pc && bb.getEndPC() > pc ) {
 					/* Went too far, start again with count */
-					it = blocks.values().iterator();
+					it = blockMap.values().iterator();
 					for( int i=0; i<count; i++ ) {
 						it.next();
 					}
@@ -174,7 +175,7 @@ public class DexMethodBody {
 	}
 	
 	public DexBasicBlock getNext( DexBasicBlock after ) {
-		for( Iterator<DexBasicBlock> it = blocks.values().iterator(); it.hasNext(); ) {
+		for( Iterator<DexBasicBlock> it = blockMap.values().iterator(); it.hasNext(); ) {
 			if( it.next() == after ) {
 				if( it.hasNext() )
 					return it.next();
@@ -184,6 +185,16 @@ public class DexMethodBody {
 			
 		}
 		return null;
+	}
+	
+	/**
+	 * Move the block to the end of the method, without updating any of the contents.
+	 * @param block
+	 */
+	protected void moveToEnd( DexBasicBlock block ) {
+		if( blocks.remove(block) ) {
+			blocks.add(block);
+		}
 	}
 	
 
@@ -218,7 +229,8 @@ public class DexMethodBody {
 	 */
 	protected void computeCFG() {
 		/* 1. Build a set of branch targets and associated basic blocks */
-		blocks = new TreeMap<Integer, DexBasicBlock>();
+		blockMap = new TreeMap<Integer, DexBasicBlock>();
+		blocks = new LinkedList<DexBasicBlock>();
 		List<Integer> worklist = new LinkedList<Integer>();
 		Set<Integer> tryEndInsts = new TreeSet<Integer>();
 		worklist.add(new Integer(0));
@@ -238,9 +250,9 @@ public class DexMethodBody {
 		do {
 			Integer item = worklist.get(0);
 			worklist.remove(0);
-			if( blocks.containsKey(item) )
+			if( blockMap.containsKey(item) )
 				continue;
-			blocks.put(item, new DexBasicBlock(this));
+			blockMap.put(item, new DexBasicBlock(this));
 			
 			int target = item.intValue();
 			while(target < code.length) {
@@ -269,7 +281,7 @@ public class DexMethodBody {
 		/* 2. Populate and link up the blocks */
 		List<DexBasicBlock> added = new ArrayList<DexBasicBlock>();
 		int bbcount=0;
-		Iterator<Map.Entry<Integer, DexBasicBlock>> it = blocks.entrySet().iterator();
+		Iterator<Map.Entry<Integer, DexBasicBlock>> it = blockMap.entrySet().iterator();
 		Map.Entry<Integer, DexBasicBlock> ent = it.next();
 		int pc = ent.getKey();
 		DexBasicBlock bb = ent.getValue();
@@ -278,6 +290,7 @@ public class DexMethodBody {
 			int nextpc;
 			DexBasicBlock nextbb;
 			boolean fallthrough;
+			blocks.add(bb);
 			if( it.hasNext() ) {
 				ent = it.next();
 				nextpc = ent.getKey();
@@ -299,6 +312,7 @@ public class DexMethodBody {
 					bb.addFallthroughSuccessor(split);
 					bb = split;
 					added.add(split);
+					blocks.add(split);
 					bbcount++;
 					if( nextbb != null )
 						nextbb.setName( "bb" + bbcount );
@@ -311,18 +325,18 @@ public class DexMethodBody {
 					ins.fixInvokeRegisters();
 				}
 				if( ins.isUncondBranch() ) {
-					DexBasicBlock succ = blocks.get(ins.getBranchTarget());
+					DexBasicBlock succ = blockMap.get(ins.getBranchTarget());
 					bb.addSuccessor(succ);
 					fallthrough = false;
 					break;
 				} else if( ins.isCondBranch() ) {
-					DexBasicBlock succ = blocks.get(ins.getBranchTarget());
+					DexBasicBlock succ = blockMap.get(ins.getBranchTarget());
 					bb.addSuccessor(succ);
 					break;
 				} else if( ins.isSwitch() ) {
 					int[] targets = ins.getSwitchTargets();
 					for( int i=0; i<targets.length; i++ ) {
-						DexBasicBlock succ = blocks.get(targets[i]);
+						DexBasicBlock succ = blockMap.get(targets[i]);
 						bb.addSuccessor(succ);
 					}
 					break;
@@ -348,7 +362,7 @@ public class DexMethodBody {
 		 */
 		for( Iterator<DexBasicBlock> bbit = added.iterator(); bbit.hasNext(); ) {
 			bb = bbit.next();
-			blocks.put(bb.getPC(), bb);
+			blockMap.put(bb.getPC(), bb);
 		}
 		
 		/* Check exception handlers for end labels that may not actually belong
@@ -358,7 +372,9 @@ public class DexMethodBody {
 		for( Iterator<DexTryCatch> ebit = handlers.iterator(); ebit.hasNext(); ) {
 			DexTryCatch handler = ebit.next();
 			if( getBlockForPC(handler.getEndPC()) == null ) {
-				blocks.put(handler.getEndPC(), new DexBasicBlock(this));
+				bb = new DexBasicBlock(this);
+				blockMap.put(handler.getEndPC(), bb);
+				blocks.add(bb);
 			}
 		}		
 	}
