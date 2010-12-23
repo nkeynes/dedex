@@ -53,10 +53,12 @@ public class DexMethodBody {
 	private List<DexTryCatch> handlers;
 	private Map<Integer, DexBasicBlock> blocks;
 	private List<DexBasicBlock> exitBlocks;
+	private DexArgument[] arguments;
 	
 	
-	public DexMethodBody( int numRegisters, int inArgWords, int outArgWords,
+	public DexMethodBody( DexMethod parent, int numRegisters, int inArgWords, int outArgWords,
 			short[]code, DexDebug debug, List<DexTryCatch> handlers ) {
+		this.parent = parent;
 		this.numRegisters = numRegisters;
 		this.inArgWords = inArgWords;
 		this.outArgWords = outArgWords;
@@ -71,11 +73,8 @@ public class DexMethodBody {
 				it.next().setParent(this);
 			}
 		}
-
-		computeCFG();
+		this.arguments = DexArgument.getArguments(this);
 	}
-	
-	protected void setParent( DexMethod parent ) { this.parent = parent; }
 	
 	public DexMethod getParent() { return parent; }
 	public DexFile getFile() {
@@ -90,6 +89,9 @@ public class DexMethodBody {
 	public int getInArgWords() { return inArgWords; }
 	public int getOutArgWords() { return outArgWords; }
 	public DexDebug getDebugInfo() { return debug; }
+	
+	public int getNumArguments() { return arguments.length; }
+	public DexArgument getArgument(int idx) { return arguments[idx]; }
 	
 	public short []getCode() { return code; }
 	public short getWord( int idx ) { return code[idx]; }
@@ -191,6 +193,9 @@ public class DexMethodBody {
 	
 	public void disassemble( PrintStream out, boolean verbose ) {
 		out.println( "        Locals: " + getNumRegisters() );
+		for( int i=0; i<arguments.length; i++ ) {
+			out.println( "        " + arguments[i].disassemble() );
+		}
 		for( Iterator<DexBasicBlock> bbit = iterator(); bbit.hasNext(); ) {
 			DexBasicBlock bb = bbit.next();
 			bb.disassemble(out, verbose);
@@ -201,13 +206,17 @@ public class DexMethodBody {
 			for( Iterator<DexTryCatch> ebit = handlers.iterator(); ebit.hasNext(); ) {
 				DexTryCatch eb = ebit.next();
 				out.println("    " + eb.getStartBlock().getName() + " .. " + eb.getEndBlock().getName() + ": " +
-						(eb.getType() == null ? "*" : DexType.format(eb.getType())) + " => " + eb.getHandlerBlock().getName() );
+						(eb.getType() == null ? "*" : eb.getType().format()) + " => " + eb.getHandlerBlock().getName() );
 			}
 		}
 	}
 	
-	
-	private void computeCFG() {
+	/**
+	 * Build the CFG representation from the raw code. Note that this needs to
+	 * be done _after_ the method has been linked into a DexFile, since it 
+	 * depends on global type information.
+	 */
+	protected void computeCFG() {
 		/* 1. Build a set of branch targets and associated basic blocks */
 		blocks = new TreeMap<Integer, DexBasicBlock>();
 		List<Integer> worklist = new LinkedList<Integer>();
@@ -282,9 +291,10 @@ public class DexMethodBody {
 			}
 			
 			int startpc = pc;
+			boolean hasExceptions = false;
 			/* Read instructions up to the end of the block */
 			while( pc < nextpc ) {
-				if( pc != startpc && tryEndInsts.contains(pc) ) {
+				if( hasExceptions || (pc != startpc && tryEndInsts.contains(pc)) ) {
 					DexBasicBlock split = new DexBasicBlock(this, "bb" + bbcount);
 					bb.addFallthroughSuccessor(split);
 					bb = split;
@@ -292,9 +302,14 @@ public class DexMethodBody {
 					bbcount++;
 					if( nextbb != null )
 						nextbb.setName( "bb" + bbcount );
+					hasExceptions = false;
 				}
 				DexInstruction ins = new DexInstruction(this, pc);
 				bb.add(ins);
+				hasExceptions = addExceptionSuccessors(ins);
+				if( ins.isInvoke() ) {
+					ins.fixInvokeRegisters();
+				}
 				if( ins.isUncondBranch() ) {
 					DexBasicBlock succ = blocks.get(ins.getBranchTarget());
 					bb.addSuccessor(succ);
@@ -316,6 +331,7 @@ public class DexMethodBody {
 					fallthrough = false;
 					break;
 				}
+				
 				pc += ins.size();
 			}
 			if( fallthrough ) {
@@ -344,35 +360,60 @@ public class DexMethodBody {
 			if( getBlockForPC(handler.getEndPC()) == null ) {
 				blocks.put(handler.getEndPC(), new DexBasicBlock(this));
 			}
-		}
-		
-		/* Add exception blocks to the final block they're protecting, as well
-		 * as any exit blocks - this isn't strictly sound, but it should be 
-		 * sufficient for our purposes
-		 */
-		for( Iterator<DexTryCatch> ebit = handlers.iterator(); ebit.hasNext(); ) {
-			DexTryCatch handler = ebit.next();
-			DexBasicBlock handlerbb = null;
-			for( Iterator<DexBasicBlock> bbit = iterator(); bbit.hasNext(); ) {
-				bb = bbit.next();
-				if( handler.getEndPC() == bb.getEndPC() ) {
-					handlerbb = handler.getHandlerBlock();
-					bb.addExceptionSuccessor(handlerbb);
-					break;
+		}		
+	}
+	
+	/**
+	 * Given a collection of live exception handlers, add any possible
+	 * exception successors to the block. 
+	 * 
+	 * Note: this is consistent with Dalvik, which is _NOT_ the same
+	 * as JVM behaviour.
+	 * @return true if any exceptions were added, otherwise false.
+	 */
+	private boolean addExceptionSuccessors( DexInstruction inst ) {
+		boolean haveThrow = false;
+		DexBasicBlock bb = inst.getParent();
+		if( inst.mayThrowAnything() ) {
+			for( Iterator<DexTryCatch> it = handlers.iterator(); it.hasNext(); ) {
+				DexTryCatch handler = it.next();
+				if( handler.isLiveAt(inst.getPC()) ) {
+					bb.addExceptionSuccessor(handler.getHandlerBlock());
+					haveThrow = true;
 				}
 			}
-
-			if( handlerbb != null ) {
-				for( Iterator<DexBasicBlock> exit = exitBlocks.iterator(); exit.hasNext(); ) {
-					DexBasicBlock exitbb = exit.next();
-					if( exitbb != handlerbb &&
-							exitbb.getPC() >= handler.getStartPC() &&
-							exitbb.getPC() < handler.getEndPC() ) {
-						exitbb.addExceptionSuccessor(handlerbb);
-						break;
+		} else {
+			DexType excs[] = inst.getThrows();
+			if( excs != null ) {
+				for( int i=0; i<excs.length; i++ ) {
+					for( Iterator<DexTryCatch> it = handlers.iterator(); it.hasNext(); ) {
+						DexTryCatch handler = it.next();
+						if( handler.isLiveAt(inst.getPC()) ) {
+							DexType handlerType = handler.getType();
+							if( handlerType == null || excs[i].isSubtypeOf(handlerType) ) {
+								/* If handler is a catch-all, or the exception is a subtype of
+								 * the handler type, then this handler will _definitely_
+								 * catch this exception if thrown.
+								 */
+								bb.addExceptionSuccessor(handler.getHandlerBlock());
+								haveThrow = true;
+								break;
+							} else if( !handlerType.isKnownType() || handlerType.isProperSubtypeOf(excs[i]) ) {
+								/* Otherwise, if the handler is of unknown type, or the handler
+								 * is a proper subtype of the thrown exception, the handler _may_
+								 * catch the exception. (This covers the edge-case 
+								 * where the actual thrown exception is a subtype of the declared
+								 * exception type).
+								 */
+								bb.addExceptionSuccessor(handler.getHandlerBlock());
+								haveThrow = true;
+								/* Note: No break in this case */								
+							}
+						}
 					}
 				}
 			}
 		}
+		return haveThrow;
 	}
 }

@@ -10,14 +10,14 @@ public class DexTryCatch {
 	private int startInst;
 	private int instCount;
 	private int handleInst;
-	private String type;
+	private DexType type;
 	
 	public DexTryCatch(int startInst, int instCount, int handleInst, String type ) {
 		this.parent = null;
 		this.startInst = startInst;
 		this.instCount = instCount;
 		this.handleInst = handleInst;
-		this.type = type;
+		this.type = (type == null ? null : new DexType(type));
 	}
 	
 	public int getStartPC() {
@@ -32,12 +32,20 @@ public class DexTryCatch {
 		return handleInst;
 	}
 
-	public String getType() {
+	public DexType getType() {
 		return type;
 	}
 	
+	public boolean isLiveAt( int pc ) { 
+		return startInst <= pc && (startInst+instCount) > pc;
+	}
+	
 	public String getInternalType() {
-		return DexItem.formatInternalName(type);
+		if( type == null ) {
+			return null;
+		} else {
+			return type.getInternalName();
+		}
 	}
 
 	public DexBasicBlock getStartBlock() {

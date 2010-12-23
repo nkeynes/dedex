@@ -5,6 +5,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
+import com.toccatasystems.dalvik.DexArgument;
 import com.toccatasystems.dalvik.DexBasicBlock;
 import com.toccatasystems.dalvik.DexFile;
 import com.toccatasystems.dalvik.DexInstruction;
@@ -26,6 +27,7 @@ public class ComputeUseDefInfo extends ForwardDataflowAnalysis<ComputeUseDefInfo
 			for( int i=0; i<body.getNumRegisters(); i++ ) {
 				defns[i] = new HashSet<DexInstruction>();
 			}
+			setArgDefs(body);
 		}
 		
 		@SuppressWarnings("unchecked")
@@ -81,7 +83,9 @@ public class ComputeUseDefInfo extends ForwardDataflowAnalysis<ComputeUseDefInfo
 			for( int i=0; i<defns.length; i++ ) {
 				if( i != 0 )
 					builder.append( ", " );
-				builder.append("{");
+				builder.append('v');
+				builder.append(Integer.toString(i));
+				builder.append(" = {");
 				for( Iterator<DexInstruction> it = defns[i].iterator(); it.hasNext(); ) {
 					DexInstruction inst = it.next();
 					builder.append( inst.disassemble() );
@@ -90,6 +94,13 @@ public class ComputeUseDefInfo extends ForwardDataflowAnalysis<ComputeUseDefInfo
 			}
 			builder.append("]");
 			return builder.toString();
+		}
+		
+		private void setArgDefs( DexMethodBody body ) {
+			for( int i=0; i < body.getNumArguments(); i++ ) {
+				DexArgument arg = body.getArgument(i);
+				defns[arg.getRegister(0)].add(arg);
+			}
 		}
 	}
 	
@@ -116,6 +127,7 @@ public class ComputeUseDefInfo extends ForwardDataflowAnalysis<ComputeUseDefInfo
 	@Override
 	protected Params visit(DexInstruction inst, Params param) {
 		if( inst.isMove() ) {
+			param.use(inst.getRegister(1), inst, 1);
 			param.move(inst.getRegister(0), inst.getRegister(1));
 		} else {
 			for( int i=0; i<inst.getNumRegisters(); i++ ) {

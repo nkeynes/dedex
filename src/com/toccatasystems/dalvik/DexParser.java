@@ -1,6 +1,7 @@
 package com.toccatasystems.dalvik;
 
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.io.File;
 import java.io.FileInputStream;
@@ -201,18 +202,15 @@ public class DexParser {
 			int flags = readULEB128();
 			int codeOffset = readULEB128();
 			result[i] = lookupMethodId(methodIdx);
-			DexMethodBody code = null;
-			if( codeOffset != 0 ) {
-				code = readMethodBody(codeOffset);
-				code.setParent(result[i]);
-			}
 			result[i].setFlags(flags);
-			result[i].setBody(code);
+			if( codeOffset != 0 ) {
+				result[i].setBody(readMethodBody(result[i], codeOffset));
+			}
 		}
 		return result;
 	}
 
-	DexMethodBody readMethodBody( int codeOffset ) throws ParseException {
+	DexMethodBody readMethodBody( DexMethod method, int codeOffset ) throws ParseException {
 		int saveposn = data.position();
 		data.position(codeOffset);
 		int numRegisters = data.getShort();
@@ -244,7 +242,7 @@ public class DexParser {
 			debug = readDebugInfo();
 		}
 		data.position(saveposn);
-		return new DexMethodBody(numRegisters, inArgWords, outArgWords, code, debug, handlers);
+		return new DexMethodBody(method, numRegisters, inArgWords, outArgWords, code, debug, handlers);
 	}
 	
 	private List<DexTryCatch> readCatchHandlers( int addr, int count, int fileOffset ) throws ParseException {
@@ -713,6 +711,9 @@ public class DexParser {
 	/************************** Post-parse analysis *************************/
 	
 	private void postParse( DexFile file ) {
+		for( Iterator<DexMethodBody> it = file.methodBodyIterator(); it.hasNext(); ) {
+			it.next().computeCFG();
+		}
 		ComputeUseDefInfo info = new ComputeUseDefInfo();
 		info.analyse(file);
 	}

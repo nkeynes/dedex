@@ -82,8 +82,10 @@ public class DexBasicBlock {
 	}
 	
 	protected void addExceptionSuccessor( DexBasicBlock handler ) {
-		this.exceptionSuccessors.add(handler);
-		handler.predecessors.add(this);
+		if( !this.exceptionSuccessors.contains(handler) ) {
+			this.exceptionSuccessors.add(handler);
+			handler.predecessors.add(this);
+		}
 	}
 
 	public DexInstruction first() {
@@ -100,6 +102,18 @@ public class DexBasicBlock {
 			return it.next();
 		else
 			return null;
+	}
+	
+	public DexInstruction getPrevious( DexInstruction before ) {
+		Iterator<DexInstruction> it;
+		DexInstruction prev = null;
+		for( it = instructions.iterator(); it.hasNext(); ) {
+			DexInstruction inst = it.next();
+			if( inst == before )
+				return prev;
+			prev = inst;
+		}
+		return null;
 	}
 	
 	public DexInstruction getTerminator() {

@@ -27,14 +27,6 @@ public class DexType implements Comparable<DexType> {
 	public final static DexType ABOOLEAN = new DexType("[Z");
 	public final static DexType AOBJECT = new DexType("[Ljava/lang/Object;");
 	
-	
-	
-	/** The const* bytecodes are polymorphic, so represent them as the
-	 * special types below until they can be flattened to a real type.
-	 */
-	public final static DexType CONST32 = new DexType("const32");
-	public final static DexType CONST64 = new DexType("const64");
-	
 	public final static DexType THROWABLE = new DexType("Ljava/lang/Throwable;");
 
 	public final static DexType EXCEPTION = new DexType("Ljava/lang/Exception;");
@@ -64,7 +56,31 @@ public class DexType implements Comparable<DexType> {
 	
 	public final static DexType SERIALIZABLE = new DexType("Ljava/io/Serializable;");
 
+	public final static DexType ABSTRACT_METHOD_ERROR = new DexType("Ljava/lang/AbstractMethodError;");
+	public final static DexType ASSERTION_ERROR = new DexType("Ljava/lang/AssertionError;");
+	public final static DexType CLASS_CIRCULARITY_ERROR = new DexType("Ljava/lang/ClassCircularityError;");
+	public final static DexType CLASS_FORMAT_ERROR = new DexType("Ljava/lang/ClassFormatError;");
 	public final static DexType ERROR = new DexType("Ljava/lang/Error;");
+	public final static DexType EXCEPTION_IN_INITIALIZER_ERROR = new DexType("Ljava/lang/ExceptionInInitializerError;");
+	public final static DexType ILLEGAL_ACCESS_ERROR = new DexType("Ljava/lang/IllegalAccessError;");
+	public final static DexType INCOMPATIBLE_CLASS_CHANGE_ERROR = new DexType("Ljava/lang/IncompatibleClassChangeError;");
+	public final static DexType INSTANTIATION_ERROR = new DexType("Ljava/lang/InstantiationError;");
+	public final static DexType INTERNAL_ERROR = new DexType("Ljava/lang/InternalError;");
+	public final static DexType LINKAGE_ERROR = new DexType("Ljava/lang/LinkageError;");
+	public final static DexType NO_CLASS_DEF_FOUND_ERROR = new DexType("Ljava/lang/NoClassDefFoundError;");
+	public final static DexType NO_SUCH_FIELD_ERROR = new DexType("Ljava/lang/NoSuchFieldError;");
+	public final static DexType NO_SUCH_METHOD_ERROR = new DexType("Ljava/lang/NoSuchMethodError;");
+	public final static DexType OUT_OF_MEMORY_ERROR = new DexType("Ljava/lang/OutOfMemoryError;");
+	public final static DexType STACK_OVERFLOW_ERROR = new DexType("Ljava/lang/StackOverflowError;");
+	public final static DexType THREAD_DEATH = new DexType("Ljava/lang/ThreadDeath;");
+	public final static DexType UNKNOWN_ERROR = new DexType("Ljava/lang/UnknownError;");
+	public final static DexType UNSATISFIED_LINK_ERROR = new DexType("Ljava/lang/UnsatisfiedLinkError;");
+	public final static DexType UNSUPPORTED_CLASS_VERSION_ERROR = new DexType("Ljava/lang/UnsupportedClassVersionError;");
+	public final static DexType VERIFY_ERROR = new DexType("Ljava/lang/VerifyError;");
+	public final static DexType VIRTUAL_MACHINE_ERROR = new DexType("Ljava/lang/VirtualMachineError;");
+	public final static DexType GENERIC_SIGNATURE_FORMAT_ERROR = new DexType("Ljava/lang/reflect/GenericSignatureFormatError;");
+	public final static DexType ZIP_ERROR = new DexType("Ljava/util/zip/ZipError;");
+	
 
 	
 	/**
@@ -139,6 +155,30 @@ public class DexType implements Comparable<DexType> {
 		add( map, SECURITY_EXCEPTION, RUNTIME_EXCEPTION ); 
 		add( map, TYPE_NOT_PRESENT_EXCEPTION, RUNTIME_EXCEPTION );
 		add( map, UNSUPPORTED_OPERATION_EXCEPTION, RUNTIME_EXCEPTION );
+		add( map, VIRTUAL_MACHINE_ERROR, ERROR );
+		add( map, INTERNAL_ERROR, VIRTUAL_MACHINE_ERROR );
+		add( map, ZIP_ERROR, INTERNAL_ERROR );
+		add( map, OUT_OF_MEMORY_ERROR, VIRTUAL_MACHINE_ERROR );
+		add( map, STACK_OVERFLOW_ERROR, VIRTUAL_MACHINE_ERROR );
+		add( map, UNKNOWN_ERROR, VIRTUAL_MACHINE_ERROR );
+		add( map, THREAD_DEATH, ERROR );
+		add( map, LINKAGE_ERROR, ERROR );
+		add( map, CLASS_CIRCULARITY_ERROR, LINKAGE_ERROR );
+		add( map, CLASS_FORMAT_ERROR, LINKAGE_ERROR );
+		add( map, GENERIC_SIGNATURE_FORMAT_ERROR, CLASS_FORMAT_ERROR );
+		add( map, UNSUPPORTED_CLASS_VERSION_ERROR, CLASS_FORMAT_ERROR );
+		add( map, EXCEPTION_IN_INITIALIZER_ERROR, LINKAGE_ERROR );
+		add( map, INCOMPATIBLE_CLASS_CHANGE_ERROR, LINKAGE_ERROR );
+		add( map, ABSTRACT_METHOD_ERROR, INCOMPATIBLE_CLASS_CHANGE_ERROR );
+		add( map, ILLEGAL_ACCESS_ERROR, INCOMPATIBLE_CLASS_CHANGE_ERROR );
+		add( map, INSTANTIATION_ERROR, INCOMPATIBLE_CLASS_CHANGE_ERROR );
+		add( map, NO_SUCH_FIELD_ERROR, INCOMPATIBLE_CLASS_CHANGE_ERROR );
+		add( map, NO_SUCH_METHOD_ERROR, INCOMPATIBLE_CLASS_CHANGE_ERROR );
+		add( map, NO_CLASS_DEF_FOUND_ERROR, LINKAGE_ERROR );
+		add( map, UNSATISFIED_LINK_ERROR, LINKAGE_ERROR );
+		add( map, VERIFY_ERROR, LINKAGE_ERROR );
+		add( map, ASSERTION_ERROR, ERROR );
+		
 		SYSTEM_SUPERTYPE_TABLE = map;
 	}		
 	
@@ -165,7 +205,7 @@ public class DexType implements Comparable<DexType> {
 	}
 	
 	public String format() {
-		return Integer.toHexString(super.hashCode()) + ":" + format(name);
+		return format(name);
 	}
 	
 	public int hashCode() {
@@ -176,8 +216,13 @@ public class DexType implements Comparable<DexType> {
 		return name.length() == 1;
 	}
 	
-	public boolean isPolymorphic() {
-		return name.startsWith("const");
+	/**
+	 * Return if the two types are compatible, for a very broad definition of
+	 * 'compatible'
+	 * @return
+	 */
+	public boolean isCompatible(DexType type) {
+		return equals(type) || (type.isObject() && isObject()) || (type.isPrimInt() && isPrimInt());
 	}
 	
 	public boolean isArray() {
@@ -200,11 +245,19 @@ public class DexType implements Comparable<DexType> {
 	 * @return true if the type is a primitive that fits in a single 32-bit word. 
 	 */
 	public boolean isPrimWord() {
-		return name == "B" || name == "C" || name == "S" || name == "I" || name == "Z" || name == "F" || name == "const32";
+		return name == "B" || name == "C" || name == "S" || name == "I" || name == "Z" || name == "F";
+	}
+	
+	/**
+	 * @return true if the type is a primitive integer that can be loaded into a 32-bit
+	 * word.
+	 */
+	public boolean isPrimInt() {
+		return name == "B" || name == "C" || name == "S" || name == "I" || name == "Z";
 	}
 	
 	public boolean isPrimDWord() {
-		return name == "D" || name == "J" || name == "const64";
+		return name == "D" || name == "J";
 	}
 	
 	public DexType getElementType() {
@@ -213,6 +266,10 @@ public class DexType implements Comparable<DexType> {
 		} else {
 			return null;
 		}
+	}
+	
+	public DexType getArrayType() {
+		return new DexType("[" + name);
 	}
 
 	/**
@@ -273,9 +330,29 @@ public class DexType implements Comparable<DexType> {
 		return name.compareTo(o.name);
 	}
 	
-	public boolean isSubtypeOf( DexType supertype ) {
+	/**
+	 * @return if the receiver is (known to be) a subtype of the parameter.
+	 */
+	public boolean isSubtypeOf( DexType type ) {
+		if( !isObject() || !type.isObject() )
+			return false;
+		if( equals(type) || type.equals(OBJECT) ) /* Everything is a subtype of Object */ 
+			return true;
+		if( isArray() && type.isArray() ) /* A[] subtype B[] iff A subtype B */
+			return getElementType().isSubtypeOf(type.getElementType());
+
 		Set<DexType> superset = SYSTEM_SUPERTYPE_TABLE.get(this);
-		return superset != null && superset.contains(supertype);
+		return superset != null && superset.contains(type);
 	}
 	
+	public boolean isProperSubtypeOf( DexType type ) {
+		if( equals(type) )
+			return false;
+		return isSubtypeOf(type);
+	}
+	
+	
+	public boolean isKnownType() {
+		return SYSTEM_SUPERTYPE_TABLE.containsKey(this);
+	}
 }

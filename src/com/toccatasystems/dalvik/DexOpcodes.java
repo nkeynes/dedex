@@ -224,4 +224,6 @@ public class DexOpcodes {
 	public final static int SHR_INT_LIT8 = 0xE1;
 	public final static int USHR_INT_LIT8 = 0xE2;
 	public final static int UNDEF = 0xFF;
+	
+	public final static int ARG = 0x100;
 }
