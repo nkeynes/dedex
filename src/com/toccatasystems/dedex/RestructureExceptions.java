@@ -1,6 +1,5 @@
 package com.toccatasystems.dedex;
 
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
@@ -62,7 +61,7 @@ public class RestructureExceptions {
 						if( !blocks.contains(pred) ) {
 							/* We have a branch into the middle of the exception region */
 							if( canMove( bb ) ) {
-								/* Block is moveable, so move it to the end of the method */
+								/* Block is movable, so move it to the end of the method */
 								bb.moveToEnd();
 								bbit.remove();
 								break;

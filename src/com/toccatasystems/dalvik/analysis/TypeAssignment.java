@@ -147,6 +147,13 @@ public class TypeAssignment extends DexAnalysis {
 			case CONST_CLASS:
 				setRegisterDefType(inst, DexType.CLASS);
 				break;
+			case MONITOR_ENTER: case MONITOR_EXIT:
+				setRegisterUseType(inst, 0, DexType.OBJECT);
+				break;
+			case CHECK_CAST:
+				setRegisterUseType(inst, 0, DexType.OBJECT);
+				setRegisterDefType(inst, inst.getTypeOperand());
+				break;
 			case INSTANCE_OF: case ARRAY_LENGTH: 
 				setRegisterDefType(inst, DexType.INT);
 				break;
@@ -303,6 +310,14 @@ public class TypeAssignment extends DexAnalysis {
 				setRegisterUseType(inst, 1, DexType.INT);
 				setRegisterDefType(inst, inst.getTypeOperand());
 				break;
+			case FILLED_NEW_ARRAY: case FILLED_NEW_ARRAY_RANGE:
+				for( int i=0; i<inst.getNumRegisters(); i++ ) {
+					setRegisterUseType(inst, i, inst.getTypeOperand().getElementType());
+				}
+				resultType = inst.getTypeOperand();
+				break;
+			case FILL_ARRAY_DATA:
+				break;
 			case AGET_WIDE:
 				setRegisterUseType(inst, 2, DexType.INT);
 				break;				
@@ -410,6 +425,16 @@ public class TypeAssignment extends DexAnalysis {
 			case RETURN: case RETURN_WIDE: case RETURN_OBJECT:
 				setRegisterUseType(inst, 0, new DexType(method.getParent().getReturnType()));
 				break;
+			case NOP: case MOVE: case MOVE_FROM16: case MOVE_16: case MOVE_WIDE:
+			case MOVE_WIDE_FROM16: case MOVE_WIDE16: case MOVE_OBJECT: case MOVE_OBJECT_FROM16:
+			case MOVE_OBJECT16: case RETURN_VOID: case CONST4: case CONST16: case CONST:
+			case CONST_HIGH16: case CONST_WIDE16: case CONST_WIDE32: case CONST_WIDE:
+			case CONST_WIDE_HIGH16: case GOTO: case GOTO16: case GOTO32: 
+			case IF_EQ: case IF_NE: case IF_EQZ: case IF_NEZ: case THROW:
+				/* No contributed type information */
+				break;
+			default:
+				throw new RuntimeException("Unhandled instruction opcode " + Integer.toHexString(inst.getOpcode()));
 			}
 		}
 	}

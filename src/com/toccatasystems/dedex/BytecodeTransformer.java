@@ -132,10 +132,23 @@ public class BytecodeTransformer {
 					pop( inst, 0 );
 					break;
 				case FILLED_NEW_ARRAY: case FILLED_NEW_ARRAY_RANGE:
-					/* TODO */
+					ldc(inst.getNumRegisters());
+					newarray(inst.getTypeOperand().getElementType());
+					for( int i=0; i<inst.getNumRegisters(); i++ ) {
+						dup();
+						ldc(i);
+						push(inst, i);
+						storearray(inst.getRegisterType(i));
+					}
+					/* Result left on stack for a move-result */
 					break;
 				case FILL_ARRAY_DATA:
-					/* TODO */
+					for( int i=0; i<inst.getNumFillElements(); i++ ) {
+						push(inst, 0);
+						ldc(i);
+						out.visitLdcInsn(inst.getFillElement(i));
+						storearray(inst.getRegisterType(0).getElementType());
+					}
 					break;
 				case THROW:
 					push( inst, 0 );
@@ -280,11 +293,23 @@ public class BytecodeTransformer {
 					invoke( inst, Opcodes.INVOKEINTERFACE );
 					break;
 	
+					/* 'not' is not a jvm bytecode, so emit val xor -1 instead */
+				case NOT_INT:
+					push(inst, 1);
+					ldc(-1);
+					out.visitInsn(Opcodes.IXOR);
+					pop(inst, 0);
+					break;
+				case NOT_LONG: /* ??? */ 
+					push(inst, 1);
+					ldc(-1);
+					out.visitInsn(Opcodes.I2L);
+					out.visitInsn(Opcodes.LXOR);
+					pop(inst, 0);
+					break;
 					/* Core arithmetic */
 				case NEG_INT:         unary( inst, Opcodes.INEG ); break;
-				case NOT_INT: /* ??? */ break;
 				case NEG_LONG:        unary( inst, Opcodes.LNEG ); break;
-				case NOT_LONG: /* ??? */ break;
 				case NEG_FLOAT:       unary( inst, Opcodes.FNEG ); break;
 				case NEG_DOUBLE:      unary( inst, Opcodes.DNEG ); break;
 				case INT_TO_LONG:     unary( inst, Opcodes.I2L ); break;
@@ -494,6 +519,10 @@ public class BytecodeTransformer {
 		}
 	}
 	
+	private void dup() {
+		out.visitInsn(Opcodes.DUP);
+	}
+	
 	private void newarray( DexType type ) {
 		if( type.equals(DexType.INT) ) {
 			out.visitIntInsn(Opcodes.NEWARRAY, Opcodes.T_INT);
@@ -556,6 +585,26 @@ public class BytecodeTransformer {
 		}
 	}
 
+	private void ldc( int value ) {
+		switch( value ) {
+		case -1: out.visitInsn(Opcodes.ICONST_M1); break;
+		case 0: out.visitInsn(Opcodes.ICONST_0); break;
+		case 1: out.visitInsn(Opcodes.ICONST_1); break;
+		case 2: out.visitInsn(Opcodes.ICONST_2); break;
+		case 3: out.visitInsn(Opcodes.ICONST_3); break;
+		case 4: out.visitInsn(Opcodes.ICONST_4); break;
+		case 5: out.visitInsn(Opcodes.ICONST_5); break;
+		default:
+			if( value <= Byte.MAX_VALUE && value >= Byte.MIN_VALUE ) {
+				out.visitIntInsn(Opcodes.BIPUSH, value);
+			} else if( value <= Short.MAX_VALUE && value >= Short.MIN_VALUE ) {
+				out.visitIntInsn(Opcodes.SIPUSH, value);
+			} else {
+				out.visitLdcInsn(value);
+			}
+		}
+	}		
+	
 	/**
 	 * Load a constant onto the stack
 	 * @param inst
@@ -566,24 +615,7 @@ public class BytecodeTransformer {
 		if( type.equals(DexType.INT) || type.equals(DexType.SHORT) || 
 				type.equals(DexType.BYTE) || type.equals(DexType.CHAR) ||
 				type.equals(DexType.BOOLEAN) ) {
-			Integer i = inst.getIntOperand();
-			switch( i ) {
-			case -1: out.visitInsn(Opcodes.ICONST_M1); break;
-			case 0: out.visitInsn(Opcodes.ICONST_0); break;
-			case 1: out.visitInsn(Opcodes.ICONST_1); break;
-			case 2: out.visitInsn(Opcodes.ICONST_2); break;
-			case 3: out.visitInsn(Opcodes.ICONST_3); break;
-			case 4: out.visitInsn(Opcodes.ICONST_4); break;
-			case 5: out.visitInsn(Opcodes.ICONST_5); break;
-			default:
-				if( i <= Byte.MAX_VALUE && i >= Byte.MIN_VALUE ) {
-					out.visitIntInsn(Opcodes.BIPUSH, i);
-				} else if( i <= Short.MAX_VALUE && i >= Short.MIN_VALUE ) {
-					out.visitIntInsn(Opcodes.SIPUSH, i);
-				} else {
-					out.visitLdcInsn(i);
-				}
-			}
+			ldc(inst.getIntOperand());
 		} else if( type.equals(DexType.LONG) ) {
 			Long l = inst.getLongOperand();
 			if( l == 0 ) {

@@ -23,7 +23,9 @@ public class DexType implements Comparable<DexType> {
 	public final static DexType ACHAR = new DexType("[C");
 	public final static DexType ASHORT = new DexType("[S");
 	public final static DexType AINT = new DexType("[I");
+	public final static DexType AFLOAT = new DexType("[F");
 	public final static DexType ALONG = new DexType("[J");
+	public final static DexType ADOUBLE = new DexType("[D");
 	public final static DexType ABOOLEAN = new DexType("[Z");
 	public final static DexType AOBJECT = new DexType("[Ljava/lang/Object;");
 	

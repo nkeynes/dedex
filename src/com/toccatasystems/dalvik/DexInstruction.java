@@ -517,7 +517,7 @@ public class DexInstruction {
 	 * of the specified type
 	 */
 	public boolean isRegisterSupertypeOf( int idx, DexType type ) {
-		return registerTypes[idx] == null || type.isProperSubtypeOf(registerTypes[idx]);
+		return type != null && (registerTypes[idx] == null || type.isProperSubtypeOf(registerTypes[idx]));
 	}
 	
 	/**
@@ -525,7 +525,7 @@ public class DexInstruction {
 	 * with the given type.
 	 */
 	public boolean isRegisterCompatibleWith( int idx, DexType type ) {
-		return registerTypes[idx] == null || type.isCompatible(registerTypes[idx]);
+		return type != null && (registerTypes[idx] == null || type.isCompatible(registerTypes[idx]));
 	}
 	
 	public void setRegisterType( int idx, DexType value ) {
@@ -795,6 +795,54 @@ public class DexInstruction {
 		}
 	}
 	
+	public int getNumFillElements() {
+		if( getOpcode() == FILL_ARRAY_DATA ) {
+			int start = size();
+			return getInt(start+2);
+		} else {
+			return 0;
+		}
+	}
+	
+	public Object getFillElement( int idx ) {
+		if( getOpcode() == FILL_ARRAY_DATA ) {
+			int start = size();
+			int elemSize = getUShort(start+1);
+			int tmp;
+			long ltmp;
+			switch( elemSize ) {
+			case 1:
+				tmp = getShort(start+4+(idx/2));
+				if( (idx & 1) != 0 ) {
+					return new Byte((byte)(tmp >> 8));
+				} else {
+					return new Byte((byte)tmp);
+				}
+			case 2:
+				return new Short((short)getShort(start+4+idx));
+			case 4:
+				tmp = getUShort(start+4+(idx*2)) | (getUShort(start+4+(idx*2)+1)<<16);
+				if( registerTypes[0] != null && registerTypes[0].equals(DexType.AFLOAT) ) {
+					return new Float( Float.intBitsToFloat(tmp) );
+				} else {
+					return new Integer(tmp);
+				}
+			case 8:
+				ltmp = ((long)getUShort(start+4+(idx*4))) | (((long)getUShort(start+4+(idx*4)+1)) << 16) |
+					   (((long)getUShort(start+4+(idx*4)+2)) << 32) | (((long)getUShort(start+4+(idx*4)+3)) << 48);
+				if( registerTypes[0] != null && registerTypes[0].equals(DexType.ADOUBLE) ) {
+					return new Double( Double.longBitsToDouble(ltmp) );
+				} else {
+					return new Long( ltmp );
+				}
+			default:
+				throw new RuntimeException( "Invalid element size in fill-array-data table: " + elemSize );
+			}
+		} else {
+			return null;
+		}
+	}
+	
 	public DexType[] getThrows() {
 		if( isThrow() ) {
 			DexType[] arr = new DexType[1];
@@ -890,8 +938,21 @@ public class DexInstruction {
 				}
 				break;
 			case 0x0300: /* fill-array-data */
-				width = getUShort(start+1);
-				size = getInt(start+2);
+				fmt.format( "{" );
+				for( int i=0; i< getNumFillElements(); i++ ) {
+					if( i != 0 ) {
+						fmt.format( ", " );
+					}
+					Object o = getFillElement(i);
+					if( o instanceof Integer ) {
+						fmt.format( "0x%08X", ((Integer)o) );
+					} else if( o instanceof Long ) {
+						fmt.format( "0x%016X", ((Long)o) );
+					} else {
+						fmt.format( o.toString() );
+					}
+				}
+				fmt.format( "}" );
 				break;
 			default:
 				break; /* Do nothing */
