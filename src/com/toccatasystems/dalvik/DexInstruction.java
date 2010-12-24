@@ -34,7 +34,7 @@ import static com.toccatasystems.dalvik.DexOpcodes.*;
  *   http://www.netmite.com/android/mydroid/dalvik/docs/dalvik-bytecode.html
  */
 
-public class DexInstruction {
+public class DexInstruction implements Comparable<DexInstruction> {
 	
 	private final static int OPTYPE_NONE = 0;
 	private final static int OPTYPE_INT = 5;
@@ -447,7 +447,7 @@ public class DexInstruction {
 		this.registerTypes = new DexType[registers.length];
 		this.registerDefs = (Set<DexInstruction>[])new Set[registers.length];
 		for( int i=0; i<registers.length; i++ ) {
-			registerDefs[i] = new HashSet<DexInstruction>();
+			registerDefs[i] = new TreeSet<DexInstruction>();
 		}
 		this.uses = new TreeSet<Use>();
 	}
@@ -471,7 +471,7 @@ public class DexInstruction {
 		this.registerTypes = new DexType[registers.length];
 		this.registerDefs = (Set<DexInstruction>[])new Set[registers.length];
 		for( int i=0; i<registers.length; i++ ) {
-			registerDefs[i] = new HashSet<DexInstruction>();
+			registerDefs[i] = new TreeSet<DexInstruction>();
 		}
 		this.uses = new TreeSet<Use>();
 	}
@@ -1161,6 +1161,27 @@ public class DexInstruction {
 		default:
 			/* This is not possible */
 			throw new RuntimeException( "Unhandled instruction mode: 0x" + Integer.toHexString(mode) );
+		}
+	}
+
+	public int compareTo(DexInstruction other) {
+		if( pc != other.pc ) {
+			return pc - other.pc;
+		} else if( opcode != other.opcode ) {
+			return opcode - other.opcode;
+		} else if( registers.length != other.registers.length ) {
+			return registers.length - other.registers.length;
+		} else {
+			for( int i=0; i<registers.length; i++ ) {
+				if( registers[i] != other.registers[i] ) {
+					return registers[i] - other.registers[i];
+				}
+			}
+			if( constOperand != other.constOperand ) {
+				return (int)(constOperand - other.constOperand);
+			} else {
+				return hashCode() - other.hashCode();
+			}
 		}
 	}
 }

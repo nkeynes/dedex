@@ -14,10 +14,10 @@
 
 package com.toccatasystems.dalvik.analysis;
 
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 import com.toccatasystems.dalvik.DexArgument;
 import com.toccatasystems.dalvik.DexBasicBlock;
@@ -39,7 +39,7 @@ public class ComputeUseDefInfo extends ForwardDataflowAnalysis<ComputeUseDefInfo
 		public Params(DexMethodBody body) {
 			defns = (Set<DexInstruction>[])new Set[body.getNumRegisters()];
 			for( int i=0; i<body.getNumRegisters(); i++ ) {
-				defns[i] = new HashSet<DexInstruction>();
+				defns[i] = new TreeSet<DexInstruction>();
 			}
 			setArgDefs(body);
 		}
@@ -48,7 +48,7 @@ public class ComputeUseDefInfo extends ForwardDataflowAnalysis<ComputeUseDefInfo
 		public Params(Params o) {
 			defns = (Set<DexInstruction>[])new Set[o.defns.length];
 			for( int i=0; i<o.defns.length; i++ ) {
-				defns[i] = new HashSet<DexInstruction>();
+				defns[i] = new TreeSet<DexInstruction>();
 				defns[i].addAll(o.defns[i]);
 			}
 		}
