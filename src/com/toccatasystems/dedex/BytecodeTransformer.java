@@ -11,6 +11,7 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
 import com.toccatasystems.dalvik.DexBasicBlock;
+import com.toccatasystems.dalvik.DexDebug;
 import com.toccatasystems.dalvik.DexField;
 import com.toccatasystems.dalvik.DexInstruction;
 import com.toccatasystems.dalvik.DexMethod;
@@ -49,6 +50,8 @@ public class BytecodeTransformer {
 		this.maxStackSize = 3;
 		out.visitCode();
 		
+		Map<Integer,DexDebug.Line> lineTable = body.getLineNumberTable();
+		
 		/* Visit the exception handlers - ASM requires that this is done before
 		 * reaching the labels in question, so it's simplest to do it first
 		 */
@@ -62,10 +65,19 @@ public class BytecodeTransformer {
 		
 		for( Iterator<DexBasicBlock> bbit = body.iterator(); bbit.hasNext(); ) {
 			DexBasicBlock bb = bbit.next();
-			out.visitLabel(labelMap.get(bb));
+			Label currLabel = labelMap.get(bb);
+			out.visitLabel(currLabel);
 			for(Iterator<DexInstruction> ii = bb.iterator(); ii.hasNext(); ) {
 				DexInstruction inst = ii.next();
-
+				if( lineTable.containsKey(inst.getPC()) ) {
+					if( currLabel == null ) {
+						currLabel = new Label();
+						out.visitLabel(currLabel);
+					}
+					out.visitLineNumber(lineTable.get(inst.getPC()).lineNo, currLabel);
+				}
+				currLabel = null;
+				
 				switch( inst.getOpcode() ) {
 				case NOP:
 					out.visitInsn(Opcodes.NOP);

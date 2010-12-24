@@ -1,7 +1,10 @@
 package com.toccatasystems.dalvik;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * DexDebug contains the debug information for a method, extracted directly debug_info_item.
@@ -23,6 +26,10 @@ public class DexDebug {
 	public final static int SET_EPILOGUE_BEGIN = 0x08;
 	public final static int SET_FILE = 0x09;
 
+	public final static int FIRST_SPECIAL = 0x0A;
+	public final static int LINE_BASE = -4;
+	public final static int LINE_RANGE = 15;
+	
 	public static class Op {
 		public int op;
 		public int intValue;
@@ -37,7 +44,18 @@ public class DexDebug {
 			this.type = type;
 			this.signature = sig;
 		}
+		
 	};
+	
+	public static class Line {
+		public String sourceFile;
+		public int lineNo;
+		
+		public Line( String sourceFile, int lineNo ) {
+			this.sourceFile = sourceFile;
+			this.lineNo = lineNo;
+		}
+	}
 	
 	private int startLine;
 	private String paramNames[];
@@ -70,6 +88,55 @@ public class DexDebug {
 		if( paramNames == null )
 			return null;
 		return paramNames[idx];
+	}
+	
+	public Map<Integer, Line> getLineNumberTable() {
+		Map<Integer,Line> lines = new TreeMap<Integer,Line>();
+		int pc = 0;
+		int lineNo = startLine;
+		String filename = null;
+		int adjop;
+		
+		for( Iterator<Op> it = debug.iterator(); it.hasNext(); ) {
+			Op op = it.next();
+			switch( op.op ) {
+			case ADVANCE_PC: pc += op.intValue; break;
+			case ADVANCE_LINE: lineNo += op.intValue; break;
+			case SET_FILE: filename = op.name; break;
+			case START_LOCAL: case START_LOCAL_EXT: case END_LOCAL:
+			case RESTART_LOCAL: case SET_PROLOGUE_END: case SET_EPILOGUE_BEGIN:
+				break; /* Ignore */
+			default:
+				adjop = op.op - FIRST_SPECIAL;
+				lineNo += LINE_BASE + (adjop%LINE_RANGE);
+				pc += (adjop/LINE_RANGE);
+				lines.put(pc, new Line(filename, lineNo));
+			}
+		}
+		return lines;
+	}
+	
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		for( int i=0; i<debug.size(); i++ ) {
+			Op op = debug.get(i);
+			builder.append("    ");
+			switch( op.op ) {
+			case END_SEQUENCE: builder.append("end"); break;
+			case ADVANCE_PC:   builder.append("advance-pc   " + op.intValue); break;
+			case ADVANCE_LINE: builder.append("advance-line " + op.intValue); break;
+			case START_LOCAL:  builder.append("start-local  v" + op.intValue + " = " + op.type + " " + op.name); break;
+			case START_LOCAL_EXT:builder.append("start-localex v" + op.intValue + " = " + op.type + " " + op.signature + " " + op.name); break;
+			case END_LOCAL:    builder.append("end-local    v" + op.intValue); break;
+			case RESTART_LOCAL:builder.append("reset-local  v" + op.intValue); break;
+			case SET_PROLOGUE_END: builder.append("prologue-end"); break;
+			case SET_EPILOGUE_BEGIN: builder.append("epilogue-begin"); break;
+			case SET_FILE:     builder.append("set-file     " + op.name); break;
+			default:           builder.append( Integer.toHexString(op.op) ); break;
+			}
+			builder.append("\n");
+		}
+		return builder.toString();
 	}
 	
 	protected void add( int op ) {

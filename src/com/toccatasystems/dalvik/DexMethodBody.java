@@ -187,6 +187,14 @@ public class DexMethodBody {
 		return null;
 	}
 	
+	public Map<Integer,DexDebug.Line> getLineNumberTable() {
+		if( debug == null ) {
+			return new TreeMap<Integer,DexDebug.Line>();
+		} else {
+			return debug.getLineNumberTable();
+		}
+	}
+	
 	/**
 	 * Move the block to the end of the method, without updating any of the contents.
 	 * @param block

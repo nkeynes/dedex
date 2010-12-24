@@ -289,7 +289,7 @@ public class DexParser {
 		
 		/* Rest is a variable-length sequence of "instructions" */
 		while(true) {
-			int op = data.get();
+			int op = data.get() & 0xFF;
 			if( op == DexDebug.END_SEQUENCE )
 				break;
 			switch( op ) {
