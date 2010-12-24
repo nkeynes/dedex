@@ -762,12 +762,12 @@ public class BytecodeTransformer {
 	 * @param opcode
 	 */
 	private void arith2b( DexInstruction inst, int opcode ) {
-		if( opcode == Opcodes.ISHR || opcode == Opcodes.ISHL || opcode == Opcodes.IUSHR ) {
+		if( opcode == Opcodes.ISUB ) {
+			ldc(inst.getIntOperand());
 			push( inst, 1 );
-			out.visitIntInsn(Opcodes.BIPUSH, inst.getIntOperand());
 		} else {
-			out.visitIntInsn(Opcodes.BIPUSH, inst.getIntOperand());
 			push( inst, 1 );
+			ldc(inst.getIntOperand());
 		}
 		out.visitInsn(opcode);
 		pop( inst, 0 );
@@ -779,8 +779,13 @@ public class BytecodeTransformer {
 	 * @param opcode
 	 */
 	private void arith2s( DexInstruction inst, int opcode ) {
-		out.visitIntInsn(Opcodes.SIPUSH, inst.getIntOperand());
-		push( inst, 1 );
+		if( opcode == Opcodes.ISUB ) {
+			ldc(inst.getIntOperand());
+			push( inst, 1 );
+		} else {
+			push( inst, 1 );
+			ldc(inst.getIntOperand());
+		}
 		out.visitInsn(opcode);
 		pop( inst, 0 );
 	}
