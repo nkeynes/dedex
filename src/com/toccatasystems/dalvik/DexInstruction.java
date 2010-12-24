@@ -800,7 +800,7 @@ public class DexInstruction {
 			int size = getUShort(start+1);
 			int []result = new int[size];
 			for( int i=0; i<size; i++ ) {
-				result[i] = pc + getInt(start + 2 + i*2);
+				result[i] = getInt(start + 2 + i*2);
 			}
 			return result;
 		}
@@ -924,7 +924,7 @@ public class DexInstruction {
 		StringBuilder builder = new StringBuilder();
 		Formatter fmt = new Formatter(builder);
 		int start = instruction.getNumWords();
-		int size, first, width;
+		int size, first;
 		if( code.length > start ) {
 			switch( code[start] ) {
 			case 0x0100: /* packed-switch */
@@ -1158,7 +1158,9 @@ public class DexInstruction {
 			registers[0] = highByte(mainWord);
 			constOperand = getLong(1);
 			break;
-			
+		default:
+			/* This is not possible */
+			throw new RuntimeException( "Unhandled instruction mode: 0x" + Integer.toHexString(mode) );
 		}
 	}
 }
