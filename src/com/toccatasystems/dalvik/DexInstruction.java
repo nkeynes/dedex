@@ -380,7 +380,10 @@ public class DexInstruction implements Comparable<DexInstruction> {
 
 		@Override
 		public int compareTo(Use o) {
-			return inst.getPC() - o.inst.getPC();
+			if( inst.getPC() != o.inst.getPC() )
+				return inst.getPC() - o.inst.getPC();
+			else
+				return operand - o.getOperand();
 		}
 	}
 	
