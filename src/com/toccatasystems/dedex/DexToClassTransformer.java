@@ -68,7 +68,7 @@ public class DexToClassTransformer implements DexVisitor {
 	public void enterFile(DexFile file) {
 		state = IN_FILE;
 		this.file = file;
-		output.begin(file.getName());
+		output.begin(file.getName(), file.getTimestamp());
 	}
 
 	public void enterClass(DexClass clz) {

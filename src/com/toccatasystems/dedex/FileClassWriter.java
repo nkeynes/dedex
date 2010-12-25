@@ -29,6 +29,7 @@ public class FileClassWriter implements ClassOutputWriter {
 
 	boolean failure;
 	private String baseDir;
+	private long timestamp;
 	
 	public FileClassWriter( String baseDir ) {
 		this.baseDir = baseDir;
@@ -44,7 +45,7 @@ public class FileClassWriter implements ClassOutputWriter {
 	public void close() {
 	}
 	
-	public void begin( String filename ) { }
+	public void begin( String filename, long timestamp ) { this.timestamp = timestamp; }
 	public void end( String filename ) { }
 	
 	public void write(String internalClassName, byte[] classData) {
@@ -62,6 +63,7 @@ public class FileClassWriter implements ClassOutputWriter {
 			FileOutputStream out = new FileOutputStream(f);
 			out.write(classData);
 			out.close();
+			f.setLastModified(timestamp);
 		} catch( IOException e ) {
 			f.delete();
 			System.err.println("Error: Unable to write file '" + f.toString() + "':" + e.getMessage() );

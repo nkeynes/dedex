@@ -14,6 +14,7 @@
 
 package com.toccatasystems.dalvik;
 
+import java.io.File;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.TreeMap;
@@ -104,14 +105,15 @@ public class DexFile extends DexItem {
 	private String []typeNameTable;
 	private DexField []fieldTable;
 	private DexMethod []methodTable;
-	
 	private DexClass []classDefTable;
+	private long timestamp;
 	
 	private Map<String,DexClass> classLookupTable;
 	
 	public DexFile( String filename, String []stringTable, String []typeNameTable,
 			DexField[] fieldTable, DexMethod []methodTable, DexClass[] classDefTable ) {
 		super(filename, 0);
+		this.timestamp = new File(filename).lastModified();
 		this.stringTable = stringTable;
 		this.typeNameTable = typeNameTable;
 		this.fieldTable = fieldTable;
@@ -149,6 +151,10 @@ public class DexFile extends DexItem {
 		}
 	}
 
+	public long getTimestamp() {
+		return timestamp;
+	}
+	
 	public int getNumStrings() {
 		return stringTable.length;
 	}

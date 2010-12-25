@@ -20,7 +20,7 @@ public interface ClassOutputWriter {
 	 * Invoked at the start of a .dex file 
 	 * @param file
 	 */
-	public void begin( String filename );
+	public void begin( String filename, long timestamp );
 	
 	/**
 	 * Write the class with the given name and contents to output

@@ -32,6 +32,7 @@ public class MultiJarClassWriter implements ClassOutputWriter {
 	JarOutputStream jar;
 	String filename;
 	boolean failure;
+	long timestamp;
 	
 	public MultiJarClassWriter( ) {
 		jar = null;
@@ -41,8 +42,8 @@ public class MultiJarClassWriter implements ClassOutputWriter {
 	public boolean hasFailure() {
 		return failure;
 	}
-
-	public void begin( String filename ) {
+	
+	public void begin( String filename, long timestamp ) {
 		File f = new File(filename);
 		String jarFile = f.getName();
 		if( jarFile.endsWith(".dex") ) {
@@ -51,6 +52,7 @@ public class MultiJarClassWriter implements ClassOutputWriter {
 			jarFile = jarFile + ".jar";
 		}
 		this.filename = jarFile;
+		this.timestamp = timestamp;
 		
 		try {
 			jar = new JarOutputStream(new FileOutputStream(jarFile));
@@ -79,7 +81,10 @@ public class MultiJarClassWriter implements ClassOutputWriter {
 	public void write(String internalClassName, byte[] classData) {
 		try {
 			if( jar != null ) {
-				jar.putNextEntry( new JarEntry(internalClassName + ".class") );
+				JarEntry entry = new JarEntry(internalClassName + ".class");
+				if( timestamp != 0 )
+					entry.setTime(timestamp);
+				jar.putNextEntry( entry );
 				jar.write(classData);
 				jar.closeEntry();
 			}

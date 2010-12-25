@@ -30,6 +30,7 @@ public class JarClassWriter implements ClassOutputWriter {
 	JarOutputStream jar;
 	String filename;
 	boolean failure;
+	long timestamp;
 	
 	public JarClassWriter( String jarFile ) throws IOException {
 		filename = jarFile;
@@ -40,8 +41,8 @@ public class JarClassWriter implements ClassOutputWriter {
 	public boolean hasFailure() {
 		return failure;
 	}
-
-	public void begin( String filename ) { }
+	
+	public void begin( String filename, long timestamp ) { this.timestamp = timestamp; }
 	public void end( String filename ) { }
 	
 	public void close() {
@@ -54,7 +55,10 @@ public class JarClassWriter implements ClassOutputWriter {
 	
 	public void write(String internalClassName, byte[] classData) {
 		try {
-			jar.putNextEntry( new JarEntry(internalClassName + ".class") );
+			JarEntry entry = new JarEntry(internalClassName + ".class");
+			if( timestamp != 0 ) 
+				entry.setTime(timestamp);
+			jar.putNextEntry( entry );
 			jar.write(classData);
 			jar.closeEntry();
 		} catch( IOException e ) {
