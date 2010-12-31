@@ -6,3 +6,4 @@ apidoc/
 lib/
 bin/
 *~
+*.class

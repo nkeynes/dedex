@@ -14,6 +14,7 @@
 
 package com.toccatasystems.dedex;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.jar.JarEntry;
@@ -31,6 +32,12 @@ public class JarClassWriter implements ClassOutputWriter {
 	String filename;
 	boolean failure;
 	long timestamp;
+	
+	public JarClassWriter( File jarFile ) throws IOException {
+		filename = jarFile.toString();
+		jar = new JarOutputStream(new FileOutputStream(jarFile));
+		failure = false;
+	}
 	
 	public JarClassWriter( String jarFile ) throws IOException {
 		filename = jarFile;

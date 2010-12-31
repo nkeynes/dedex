@@ -7,13 +7,6 @@
     <version>0.4</version>
     <name>Dedex</name>
     <url>http://dedex.sourceforge.net/</url>
-    <repositories>
-        <repository>
-            <id>java.net2</id>
-            <name>Repository hosting the jee6 artifacts</name>
-            <url>http://download.java.net/maven/2</url>
-        </repository>
-    </repositories>
     <dependencies>
         <dependency>
             <groupId>asm</groupId>
@@ -46,14 +39,13 @@
             <version>4.5</version>
             <scope>test</scope>
         </dependency>
-
     </dependencies>
     <build>
         <directory>target</directory>
         <outputDirectory>target/classes</outputDirectory>
         <finalName>${artifactId}-${version}</finalName>
         <testOutputDirectory>target/test-classes</testOutputDirectory>
-        <sourceDirectory>src</sourceDirectory>
+        <sourceDirectory>src/main/java</sourceDirectory>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -83,7 +75,18 @@
                         </configuration>
                     </execution>
                 </executions>
-            </plugin>        
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.7.1</version>
+                <configuration>
+                    <includes>
+                        <include>**/TestSuite.java</include>
+                    </includes>
+                    <useFile>false</useFile>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
     <profiles>
