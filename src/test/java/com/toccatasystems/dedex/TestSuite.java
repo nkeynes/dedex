@@ -117,6 +117,6 @@ public class TestSuite {
 	}
 	
 	public static void main(String args[]) throws Exception {
-		new ITTestSuite().run();
+		new TestSuite().run();
 	}
 }
