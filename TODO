@@ -1,9 +1,0 @@
-
-1. Properly undo the code layout optimizations that dx performs - dedex
-currently 'fixes' a couple of specific cases that break the JVM verifier,
-but really we should do a full relayout back to the 'original' layout
-(which would make Jode much happier as well)
-
-2. Automate tests
-
-3. Add some simple optimizations to generate better bytecode.
