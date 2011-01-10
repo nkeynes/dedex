@@ -85,7 +85,7 @@ public class DedexCase {
 	}
 	
 	private boolean isDexCurrent() {
-		return this.dexFile.canRead() && dexFile.lastModified() > sourceTimestamp;
+		return this.dexFile.canRead() && dexFile.lastModified() >= sourceTimestamp;
 	}
 		
 	private File[] getJavaFiles(File dir) {
