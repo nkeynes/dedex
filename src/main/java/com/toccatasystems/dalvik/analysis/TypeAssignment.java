@@ -235,6 +235,9 @@ public class TypeAssignment extends DexAnalysis {
 				setRegisterDefType(inst, DexType.LONG);
 				break;
 			case NEG_FLOAT: 
+				setRegisterUseType(inst, 1, DexType.FLOAT);
+				setRegisterDefType(inst, DexType.FLOAT);
+				break;
 			case ADD_FLOAT: case SUB_FLOAT: case MUL_FLOAT: case DIV_FLOAT: case REM_FLOAT:
 				setRegisterUseType(inst, 1, DexType.FLOAT);
 				setRegisterUseType(inst, 2, DexType.FLOAT);
@@ -246,6 +249,9 @@ public class TypeAssignment extends DexAnalysis {
 				setRegisterDefType(inst, DexType.FLOAT);
 				break;
 			case NEG_DOUBLE: 
+				setRegisterUseType(inst, 1, DexType.DOUBLE);
+				setRegisterDefType(inst, DexType.DOUBLE);
+				break;
 			case ADD_DOUBLE: case SUB_DOUBLE: case MUL_DOUBLE: case DIV_DOUBLE: case REM_DOUBLE:
 				setRegisterUseType(inst, 1, DexType.DOUBLE);
 				setRegisterUseType(inst, 2, DexType.DOUBLE);
