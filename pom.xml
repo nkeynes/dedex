@@ -9,19 +9,19 @@
     <url>http://dedex.sourceforge.net/</url>
     <dependencies>
         <dependency>
-            <groupId>asm</groupId>
+            <groupId>org.ow2.asm</groupId>
             <artifactId>asm</artifactId>
-            <version>3.3</version>
+            <version>7.1</version>
         </dependency>
         <dependency>
-            <groupId>asm</groupId>
+            <groupId>org.ow2.asm</groupId>
             <artifactId>asm-util</artifactId>
-            <version>3.3</version>
+            <version>7.1</version>
         </dependency>
         <dependency>
-            <groupId>asm</groupId>
+            <groupId>org.ow2.asm</groupId>
             <artifactId>asm-analysis</artifactId>
-            <version>3.3</version>
+            <version>7.1</version>
         </dependency>
         <dependency>
             <groupId>commons-cli</groupId>
@@ -43,7 +43,7 @@
     <build>
         <directory>target</directory>
         <outputDirectory>target/classes</outputDirectory>
-        <finalName>${artifactId}-${version}</finalName>
+        <finalName>${project.artifactId}-${project.version}</finalName>
         <testOutputDirectory>target/test-classes</testOutputDirectory>
         <sourceDirectory>src/main/java</sourceDirectory>
         <plugins>
