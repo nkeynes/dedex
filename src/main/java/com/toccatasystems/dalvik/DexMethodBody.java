@@ -16,9 +16,11 @@ package com.toccatasystems.dalvik;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Formatter;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -28,7 +30,7 @@ public class DexMethodBody {
 	
 	/**
 	 * Instruction iterator (note this assumes that the method has at least one
-	 * basic block, and that basic blocks cannot be empty).
+	 * basic block).
 	 * @author nkeynes
 	 *
 	 */
@@ -42,11 +44,14 @@ public class DexMethodBody {
 		}
 
 		public boolean hasNext() {
-			return ii.hasNext() || bbit.hasNext();
+			while( !ii.hasNext() && bbit.hasNext() ) {
+				ii = bbit.next().iterator();
+			}
+			return ii.hasNext();
 		}
 
 		public DexInstruction next() {
-			if( !ii.hasNext() ) {
+			while( !ii.hasNext() ) {
 				ii = bbit.next().iterator();
 			}
 			return ii.next();
@@ -85,7 +90,8 @@ public class DexMethodBody {
 			this.handlers = new ArrayList<DexTryCatch>();
 		} else {
 			for( Iterator<DexTryCatch> it = handlers.iterator(); it.hasNext(); ) {
-				it.next().setParent(this);
+				DexTryCatch handler = it.next();
+				handler.setParent(this);
 			}
 		}
 		this.arguments = DexArgument.getArguments(this);
@@ -113,8 +119,8 @@ public class DexMethodBody {
 	
 	public List<DexTryCatch> getExceptionHandlers() { return handlers; }
 	
-	public Iterator<DexTryCatch> handlerIterator() {
-		return handlers.iterator();
+	public ListIterator<DexTryCatch> handlerIterator() {
+		return handlers.listIterator();
 	}
 		
 	public DexBasicBlock getEntryBlock() {
@@ -138,6 +144,19 @@ public class DexMethodBody {
 		return blockMap.get(pc);
 	}
 
+	public String getBlockNameForPC( int pc ) {
+		DexBasicBlock bb = blockMap.get(pc);
+		return bb == null ? ("null#" + String.format("%04X",  pc)) : bb.getName();
+	}
+	
+	public DexBasicBlock addBlock( int pc, String name ) {
+		DexBasicBlock bb = new DexBasicBlock(this);
+		bb.setName(name);
+		blockMap.put(pc, bb);
+		blocks.add(bb);
+		return bb;
+	}
+	
 	public Iterator<DexBasicBlock> iterator() {
 		return blocks.iterator();
 	}
@@ -238,8 +257,8 @@ public class DexMethodBody {
 			out.println( "Exceptions:" );
 			for( Iterator<DexTryCatch> ebit = handlers.iterator(); ebit.hasNext(); ) {
 				DexTryCatch eb = ebit.next();
-				out.println("    " + eb.getStartBlock().getName() + " .. " + eb.getEndBlock().getName() + ": " +
-						(eb.getType() == null ? "*" : eb.getType().format()) + " => " + eb.getHandlerBlock().getName() );
+				out.println("    " + eb.getStartBlockName() + " .. " + eb.getEndBlockName() + ": " +
+						(eb.getType() == null ? "*" : eb.getType().format()) + " => " + eb.getHandlerBlockName() );
 			}
 		}
 	}
@@ -387,16 +406,24 @@ public class DexMethodBody {
 			blockMap.put(bb.getPC(), bb);
 		}
 		
-		/* Check exception handlers for end labels that may not actually belong
-		 * to any basic block (i.e. they point past the end of code), and create
-		 * empty blocks for them.
+		/* Check exception handlers for:
+		 *   a) end labels that may not actually belong to any basic block 
+		 *    (i.e. they point past the end of code) => create empty blocks for them.
+		 *   b) being completely unreachable => create a dependency from the
+		 *     start of the try block to keep the graph connected.
 		 */
 		for( Iterator<DexTryCatch> ebit = handlers.iterator(); ebit.hasNext(); ) {
 			DexTryCatch handler = ebit.next();
 			if( getBlockForPC(handler.getEndPC()) == null ) {
 				bb = new DexBasicBlock(this);
+				bb.setName("ex" + bbcount);
+				bbcount++;
 				blockMap.put(handler.getEndPC(), bb);
 				blocks.add(bb);
+			}
+			DexBasicBlock excBlock = handler.getHandlerBlock();
+			if( excBlock.getNumPredecessors() == 0 ) {
+				handler.getStartBlock().addExceptionSuccessor(excBlock);
 			}
 		}		
 	}
@@ -453,5 +480,17 @@ public class DexMethodBody {
 			}
 		}
 		return haveThrow;
+	}
+	
+	public void verifyMethod() {
+		Iterator<DexBasicBlock> bbit = blocks.iterator();
+		while( bbit.hasNext() ) {
+			DexBasicBlock bb = bbit.next();
+			if( bb.isEmpty() ) {
+				disassemble(System.out);
+				throw new IllegalStateException("Empty block " + bb.getName() + " in method " + parent.getDisplaySignature() );
+			}
+		}
+		
 	}
 }

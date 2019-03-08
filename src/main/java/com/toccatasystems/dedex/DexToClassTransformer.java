@@ -22,6 +22,7 @@ import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.analysis.Analyzer;
@@ -73,7 +74,7 @@ public class DexToClassTransformer implements DexVisitor {
 
 	public void enterClass(DexClass clz) {
 		writer = new DexClassWriter(file, ClassWriter.COMPUTE_FRAMES|ClassWriter.COMPUTE_MAXS);
-		writer.visit(49, clz.getFlags(), clz.getInternalName(), clz.getSignature(), clz.getInternalSuperName(),
+		writer.visit(49, clz.getFlags()|Opcodes.ACC_SUPER, clz.getInternalName(), clz.getSignature(), clz.getInternalSuperName(),
 				clz.getInternalInterfaces() );
 		
 		writer.visitSource(clz.getSourceFile(), null);

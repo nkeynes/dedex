@@ -14,6 +14,8 @@
 
 package com.toccatasystems.dedex;
 
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
@@ -60,16 +62,16 @@ public class RestructureExceptions {
 	public void transform( DexMethodBody body ) {
 		/**
 		 * Scan the try-catch list for exception regions that have multiple
-		 * entry points. If we find one, see if the entry points can be sliced
-		 * from the exception block (i.e. they do not actually raise a exception
-		 * in the Dalvik VM).
+		 * entry points and change to one or more single-entry regions (JVM
+		 * does not approve)
 		 */
-		for( Iterator<DexTryCatch> it = body.handlerIterator(); it.hasNext(); ) {
+		boolean needSort = false;
+		for( ListIterator<DexTryCatch> it = body.handlerIterator(); it.hasNext(); ) {
 			DexTryCatch handler = it.next();
 			List<DexBasicBlock> blocks = handler.getBlocks();
 			for( ListIterator<DexBasicBlock> bbit = blocks.listIterator(); bbit.hasNext(); ) {
 				DexBasicBlock bb = bbit.next();
-				if( bb.getPC() != handler.getStartPC() ) {
+				if( bb.getPC() != handler.getStartPC() && bb.getPC() < handler.getEndPC() ) {
 					for( Iterator<DexBasicBlock> predit = bb.predIterator(); predit.hasNext(); ) {
 						DexBasicBlock pred = predit.next();
 						if( !blocks.contains(pred) ) {
@@ -83,18 +85,40 @@ public class RestructureExceptions {
 								handler.setEndPC(pred.getEndPC());
 								bbit.add(pred);
 							} else {
-								//System.out.println( "Error: Branch into " + bb.getName() + " from " + pred.getName() + " in " + 
-								//		body.getParent().getDisplaySignature() );
-								//body.disassemble(System.out);
+								/* split the handler block */
+								DexTryCatch rest = handler.split(bb.getPC());
+								it.add(rest);
+								needSort = true;
 								break;
 							}
 						}
 					}
-				}
-				
+				}	
 			}
+		}
 		
+		if( needSort ) {
+			/* If we split any blocks, resort the handler list to ensure they're 
+			 * ordered by start PC
+			 */
+			Collections.sort(body.getExceptionHandlers(), new Comparator<DexTryCatch>() {
+				@Override
+				public int compare(DexTryCatch o1, DexTryCatch o2) {
+					return o1.getStartPC() - o2.getStartPC();
+				}
+			});
+		}
+		
+		int finalCount = 0;
+		for( ListIterator<DexTryCatch> it = body.handlerIterator(); it.hasNext(); ) {
+			DexTryCatch handler = it.next();
+			/* Make sure we have a label for the handler-end. This can be missing
+			 * if we added the final block to the end of the handler region and 
+			 * there was no existing label after it. */
+			if( body.getBlockForPC(handler.getEndPC()) == null ) {
+				body.addBlock(handler.getEndPC(), "final." + finalCount);
+				++finalCount;
+			}
 		}
 	}
-	
 }
